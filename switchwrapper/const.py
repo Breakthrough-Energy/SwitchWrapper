@@ -23,3 +23,16 @@ non_fuels = [
     "Water",
     "Geothermal",
 ]
+
+investment_costs_by_type = {
+    "coal": 5.255e6,
+    "dfo": 1e7,
+    "geothermal": 7.696e6,
+    "hydro": 5.983e6,
+    "ng": 1.616e6,
+    "nuclear": 7.186e6,
+    "other": 1e7,
+    "solar": 1.6e6,
+    "wind": 1.956e6,
+    "wind_offshore": 5.342e6,
+}
