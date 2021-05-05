@@ -1,5 +1,9 @@
 import os
 
+import pandas as pd
+
+from switchwrapper import const
+
 
 def grid_to_switch(grid, outputfolder):
     financials_filepath = os.path.join(outputfolder, "financials.csv")
@@ -87,4 +91,8 @@ def build_transmission_lines():
 
 
 def build_trans_params():
-    pass
+    """Parse transmission parameters constants to a data frame.
+
+    :return: (*pandas.DataFrame*) -- single-row data frame with all params.
+    """
+    return pd.DataFrame([const.transmission_parameters])
