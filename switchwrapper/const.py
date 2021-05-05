@@ -36,3 +36,10 @@ investment_costs_by_type = {
     "wind": 1.956e6,
     "wind_offshore": 5.342e6,
 }
+
+assumed_pmins = {
+    "coal": None,
+    "default": 0,
+    "geothermal": 0.95,
+    "nuclear": 0.95,
+}
