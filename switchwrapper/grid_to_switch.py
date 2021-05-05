@@ -8,7 +8,7 @@ from switchwrapper import const
 def grid_to_switch(grid, outputfolder):
     base_year = get_base_year()
     financials_filepath = os.path.join(outputfolder, "financials.csv")
-    build_financials().to_csv(financials_filepath, index=False)
+    build_financials(base_year).to_csv(financials_filepath, index=False)
 
     fuels_filepath = os.path.join(outputfolder, "fuels.csv")
     build_fuels().to_csv(fuels_filepath, index=False)
@@ -59,8 +59,15 @@ def get_base_year():
     return input("Please enter base study year (normally PowerSimData scenario year): ")
 
 
-def build_financials():
-    pass
+def build_financials(base_year):
+    """Parse financial parameters constants and base year input to a data frame.
+
+    :param int/str base_year: Information to be added in the 'base_year' column.
+    :return: (*pandas.DataFrame*) -- single-row data frame with all params.
+    """
+    financials = pd.DataFrame([const.financial_parameters])
+    financials["base_year"] = base_year
+    return financials
 
 
 def build_fuels():
