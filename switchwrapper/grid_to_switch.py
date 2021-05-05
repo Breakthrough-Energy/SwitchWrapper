@@ -6,6 +6,7 @@ from switchwrapper import const
 
 
 def grid_to_switch(grid, outputfolder):
+    base_year = get_base_year()
     financials_filepath = os.path.join(outputfolder, "financials.csv")
     build_financials().to_csv(financials_filepath, index=False)
 
@@ -48,6 +49,14 @@ def grid_to_switch(grid, outputfolder):
 
     trans_params_filepath = os.path.join(outputfolder, "trans_params.csv")
     build_trans_params().to_csv(trans_params_filepath, index=False)
+
+
+def get_base_year():
+    """Prompt the user for a base year.
+
+    :return: (*str*) -- base year.
+    """
+    return input("Please enter base study year (normally PowerSimData scenario year): ")
 
 
 def build_financials():
