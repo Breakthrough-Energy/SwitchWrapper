@@ -71,7 +71,14 @@ def build_financials(base_year):
 
 
 def build_fuels():
-    pass
+    """Parse set of fuels to a data frame.
+
+    :return: (*pandas.DataFrame*) -- single-row data frame with all params.
+    """
+    fuels = pd.DataFrame({"fuel": const.fuels})
+    fuels["co2_intensity"] = "."
+    fuels["upstream_co2_intensity"] = "."
+    return fuels
 
 
 def build_fuel_cost():
