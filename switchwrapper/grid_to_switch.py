@@ -74,8 +74,17 @@ def build_gen_build_predetermined():
     pass
 
 
-def build_load_zones():
-    pass
+def build_load_zones(bus):
+    """Parse bus data frame and load zone constants to a data frame.
+
+    :param pandas.DataFrame bus: bus data from a Grid object.
+    :return: (*pandas.DataFrame*) -- data frame with constants added to bus indices.
+    """
+    load_zones = bus.index.to_frame()
+    load_zones["dbid"] = range(1, len(load_zones) + 1)
+    for k, v in const.load_parameters.items():
+        load_zones[k] = v
+    return load_zones
 
 
 def build_non_fuel_energy_source():
