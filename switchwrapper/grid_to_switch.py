@@ -1,3 +1,6 @@
+import os
+
+
 def grid_to_switch(grid, outputfolder):
     financials_filepath = os.path.join(outputfolder, "financials.csv")
     build_financials().to_csv(financials_filepath, index=False)
