@@ -68,9 +68,10 @@ def grid_to_switch(grid, outputfolder):
 def get_base_year():
     """Prompt the user for a base year.
 
-    :return: (*str*) -- base year.
+    :return: (*int*) -- base year.
     """
-    return input("Please enter base study year (normally PowerSimData scenario year): ")
+    year = input("Please enter base study year (normally PowerSimData scenario year): ")
+    return int(year)
 
 
 def get_inv_periods():
