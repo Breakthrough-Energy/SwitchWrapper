@@ -3,7 +3,7 @@ financial_parameters = {
     "interest_rate": 0.029,
 }
 
-fuels = {"Coal", "NaturalGas", "Uranium"}
+fuels = ["Coal", "NaturalGas", "Uranium"]
 
 load_parameters = {
     "existing_local_td": 99999,
