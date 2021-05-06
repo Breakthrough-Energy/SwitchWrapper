@@ -32,7 +32,7 @@ def grid_to_switch(grid, outputfolder):
         gen_build_predetermined_filepath, index=False
     )
 
-    load_zones_filepath = os.path.join(outputfolder, "gen_build_costs.csv")
+    load_zones_filepath = os.path.join(outputfolder, "load_zones.csv")
     build_load_zones().to_csv(load_zones_filepath, index=False)
 
     non_fuel_energy_source_filepath = os.path.join(
