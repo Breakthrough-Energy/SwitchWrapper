@@ -31,7 +31,8 @@ def grid_to_switch(grid, outputfolder):
     )
 
     gen_build_costs_filepath = os.path.join(outputfolder, "gen_build_costs.csv")
-    build_gen_build_costs().to_csv(gen_build_costs_filepath, index=False)
+    gen_build_costs = build_gen_build_costs(grid, cost_at_min_power, inv_period)
+    gen_build_costs.to_csv(gen_build_costs_filepath, index=False)
 
     gen_build_predetermined_filepath = os.path.join(
         outputfolder, "gen_build_predetermined.csv"
