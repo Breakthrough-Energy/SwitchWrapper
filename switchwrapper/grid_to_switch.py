@@ -97,7 +97,12 @@ def get_inv_periods():
             "Please enter investment period year, separate by space: "
         ).split()
         if len(inv_period) == num_inv_stages:
-            break
+            try:
+                inv_period = [int(i) for i in inv_period]
+                break
+            except ValueError:
+                print("All investment period years must be integers, please re-enter.")
+                continue
         print(
             "investment period must match the number of investment stages, "
             "please re-enter."
@@ -108,7 +113,12 @@ def get_inv_periods():
             "Please enter start year for each period, separate by space: "
         ).split()
         if len(period_start) == num_inv_stages:
-            break
+            try:
+                period_start = [int(p) for p in period_start]
+                break
+            except ValueError:
+                print("All start years must be integers, please re-enter.")
+                continue
         print(
             "start year for each period must match the number of investment stages, "
             "please re-enter."
@@ -119,7 +129,12 @@ def get_inv_periods():
             "Please enter end year for each period, separate by space: "
         ).split()
         if len(period_end) == num_inv_stages:
-            break
+            try:
+                period_end = [int(p) for p in period_end]
+                break
+            except ValueError:
+                print("All end years must be integers, please re-enter.")
+                continue
         print(
             "end year for each period must match the number of investment stages, "
             "please re-enter."
