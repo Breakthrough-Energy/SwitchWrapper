@@ -6,9 +6,14 @@ from switchwrapper import const
 
 
 def grid_to_switch(grid, outputfolder):
+    # First, prompt the user for information not contained in const or the passed grid
     base_year = get_base_year()
     inv_period, period_start, period_end = get_inv_periods()
 
+    # Then, calculate information which feeds multiple data frames
+    cost_at_min_power, single_segment_slope = linearize_gencost(grid)
+
+    # Finally, generate and save data frames to CSVs
     financials_filepath = os.path.join(outputfolder, "financials.csv")
     build_financials(base_year).to_csv(financials_filepath, index=False)
 
