@@ -6,6 +6,9 @@ from switchwrapper import const
 
 
 def grid_to_switch(grid, outputfolder):
+    # Create the outputfolder, if it doesn't already exist
+    os.makedirs(outputfolder, exist_ok=True)
+
     # First, prompt the user for information not contained in const or the passed grid
     base_year = get_base_year()
     inv_period, period_start, period_end = get_inv_periods()
