@@ -16,3 +16,10 @@ transmission_parameters = {
     "trans_fixed_om_fraction": 0,
     "distribution_loss_rate": 0,
 }
+
+non_fuels = [
+    "Wind",
+    "Solar",
+    "Water",
+    "Geothermal",
+]

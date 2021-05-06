@@ -168,7 +168,13 @@ def build_load_zones(bus):
 
 
 def build_non_fuel_energy_source():
-    pass
+    """Parse list of non fuel energy sources to a data frame
+
+    :return: (*pandas.DataFrame*) -- single column data frame with non-fuel energy
+        sources
+    """
+    non_fuel_energy_source = pd.DataFrame({"energy_source": const.non_fuels})
+    return non_fuel_energy_source
 
 
 def build_periods(inv_period, period_start, period_end):
