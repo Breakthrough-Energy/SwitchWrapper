@@ -36,7 +36,7 @@ def grid_to_switch(grid, outputfolder):
     )
 
     load_zones_filepath = os.path.join(outputfolder, "load_zones.csv")
-    build_load_zones().to_csv(load_zones_filepath, index=False)
+    build_load_zones(grid.bus).to_csv(load_zones_filepath, index=False)
 
     non_fuel_energy_source_filepath = os.path.join(
         outputfolder, "non_fuel_energy_source.csv"
