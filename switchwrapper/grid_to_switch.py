@@ -7,6 +7,8 @@ from switchwrapper import const
 
 def grid_to_switch(grid, outputfolder):
     base_year = get_base_year()
+    inv_period, period_start, period_end = get_inv_periods()
+
     financials_filepath = os.path.join(outputfolder, "financials.csv")
     build_financials(base_year).to_csv(financials_filepath, index=False)
 
@@ -42,7 +44,9 @@ def grid_to_switch(grid, outputfolder):
     build_non_fuel_energy_source().to_csv(non_fuel_energy_source_filepath, index=False)
 
     periods_filepath = os.path.join(outputfolder, "periods.csv")
-    build_periods().to_csv(periods_filepath, index=False)
+    build_periods(inv_period, period_start, period_end).to_csv(
+        periods_filepath, index=False
+    )
 
     transmission_lines_filepath = os.path.join(outputfolder, "transmission_lines.csv")
     build_transmission_lines().to_csv(transmission_lines_filepath, index=False)
@@ -57,6 +61,59 @@ def get_base_year():
     :return: (*str*) -- base year.
     """
     return input("Please enter base study year (normally PowerSimData scenario year): ")
+
+
+def get_inv_periods():
+    """Prompt the user for investment stage, investment period, start year of each
+    period, end year of each period.
+
+    :return: (*tuple*) -- 3-tuple of lists, investment periods, start years, end years
+    """
+    while True:
+        num_inv_stages = input("Please enter the number of investment stages: ")
+        if not num_inv_stages.isdigit():
+            print("number of investment stages must be an integer, please re-enter.")
+        else:
+            num_inv_stages = int(num_inv_stages)
+            break
+    if num_inv_stages == 1:
+        print("Single stage expansion identified.")
+    else:
+        print("Multi stage expansion identified.")
+
+    while True:
+        inv_period = input(
+            "Please enter investment period year, separate by space: "
+        ).split()
+        if len(inv_period) == num_inv_stages:
+            break
+        print(
+            "investment period must match the number of investment stages, "
+            "please re-enter."
+        )
+
+    while True:
+        period_start = input(
+            "Please enter start year for each period, separate by space: "
+        ).split()
+        if len(period_start) == num_inv_stages:
+            break
+        print(
+            "start year for each period must match the number of investment stages, "
+            "please re-enter."
+        )
+
+    while True:
+        period_end = input(
+            "Please enter end year for each period, separate by space: "
+        ).split()
+        if len(period_end) == num_inv_stages:
+            break
+        print(
+            "end year for each period must match the number of investment stages, "
+            "please re-enter."
+        )
+    return inv_period, period_start, period_end
 
 
 def build_financials(base_year):
@@ -114,8 +171,20 @@ def build_non_fuel_energy_source():
     pass
 
 
-def build_periods():
-    pass
+def build_periods(inv_period, period_start, period_end):
+    """Parse user input investment period information into a data frame.
+
+    :param list inv_period: list of strings for each investment period year
+    :param list period_start: list of strings for start year of each period
+    :param list period_end: list of strings for end year of each period
+    :return: (*pandas.DataFrame*) -- periods data frame with investment period
+        information.
+    """
+    periods = pd.DataFrame(columns=["INVESTMENT_PERIOD", "period_start", "period_end"])
+    periods["INVESTMENT_PERIOD"] = inv_period
+    periods["period_start"] = period_start
+    periods["period_end"] = period_end
+    return periods
 
 
 def build_transmission_lines():
