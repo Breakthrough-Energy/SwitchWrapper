@@ -116,6 +116,33 @@ def get_inv_periods():
     return inv_period, period_start, period_end
 
 
+def linearize_gencost(grid):
+    """Calculate linearized cost parameters, incorporating assumed minimum generation.
+
+    :param powersimdata.input.grid.Grid grid: grid instance.
+    :return: (*tuple*) -- two pandas Series objects, indexed by plant ID within ``grid``:
+        first is the cost of running each generator at minimum generation.
+        second is the single-segment linearized slope of each generator's cost curve.
+    """
+    plant_mod = grid.plant.copy()
+    plant_mod.Pmin = plant_mod.apply(
+        lambda x: x.Pmax * const.assumed_pmin.get(x.type, const.assumed_pmin["default"])
+        if const.assumed_pmin[x.type] != None else x.Pmin
+    )
+    gencost = grid.gencost["before"]
+    cost_at_min_power = (
+        gencost.c0 + gencost.c1 * plant_mod.Pmin + gencost.c2 * plant_mod.Pmin ** 2
+    )
+    cost_at_max_power = (
+        gencost.c0 + gencost.c1 * plant_mod.Pmax + gencost.c2 * plant_mod.Pmax ** 2
+    )
+    single_segment_slope = (
+        (cost_at_max_power - cost_at_min_power) / (plant_mod.Pmax - plant_mod.Pmin)
+    )
+    single_segment_slope.fillna(0, inplace=True)
+    return cost_at_min_power, single_segment_slope
+
+
 def build_financials(base_year):
     """Parse financial parameters constants and base year input to a data frame.
 
