@@ -179,8 +179,40 @@ def build_generation_projects_info():
     pass
 
 
-def build_gen_build_costs():
-    pass
+def build_gen_build_costs(plant, cost_at_min_power, inv_period):
+    """Build a data frame of generation projects, both existing and hypothetical.
+
+    :param pandas.DataFrame plant: data frame of current generators.
+    :param pandas.Series cost_at_min_power: cost of running generator at minimum power.
+    :param list inv_period: list of investment period years.
+    :return: (*pandas.DataFrame*) -- data frame of existing and hypothetical generators.
+    """
+    # Build lists for each columns, which apply to one year
+    original_plant_indices = [f"g{p}" for p in plant.index.tolist()]
+    overnight_costs = plant["type"].map(const.investment_costs_by_type)
+    gen_fixed_om = (cost_at_min_power / plant.Pmax).fillna(0.0).tolist()
+
+    # Extend these lists to multiple years
+    build_years = [2019] + inv_period
+    hypothetical_plant_indices = [f"{o}i" for o in original_plant_indices]
+    plant_index_lists = (
+        [original_plant_indices] + [hypothetical_plant_indices for i in inv_period]
+    )
+    all_indices = sum(plant_index_lists, [])
+    all_build_years = sum([[b] * len(original_plant_indices) for b in build_years], [])
+    all_overnight_costs = sum([overnight_costs for b in build_years], [])
+    all_gen_fixed_om = sum([gen_fixed_om for b in build_years], [])
+
+    # Create a dataframe from the collected lists
+    gen_build_costs = pd.DataFrame(
+        {
+            "GENERATION_PROJECT": all_indices,
+            "build_year": all_build_years,
+            "gen_overnight_cost": all_overnight_costs,
+            "gen_fixed_om": all_gen_fixed_om,
+        }
+    )
+    return gen_build_costs
 
 
 def build_gen_build_predetermined():
