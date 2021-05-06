@@ -194,8 +194,42 @@ def build_fuels():
     return fuels
 
 
-def build_fuel_cost():
-    pass
+def build_fuel_cost(plant, base_year, inv_period):
+    """Create a data frame of average fuel costs by zone and fuel, and project these
+        costs to future years.
+
+    :param pandas.DataFrame plant: plant data from a Grid object.
+    :param list inv_period: list of investment period years, as integers.
+    :return: (*pandas.DataFrame*) -- data frame of fuel costs by period, zone, and fuel.
+    """
+    plant_mod = plant.copy()
+    # Map our generator types to Switch fuel types
+    plant_mod["fuel"] = plant_mod["type"].map(const.fuel_mapping)
+    # Calculate the average fuel cost for each (bus_id, fuel)
+    relevant_fuel_columns = ["bus_id", "fuel", "GenFuelCost"]
+    fuel_cost = plant_mod[relevant_fuel_columns].groupby(["bus_id", "fuel"]).mean()
+    # Retrieve the original `bus_id` and `fuel` columns, rename `bus_id` to `load_zone`
+    fuel_cost.reset_index(inplace=True)
+    fuel_cost.rename(columns={"bus_id": "load_zone"})
+    # Duplicate each row N times, where N is the number of investment years
+    original_fuel_cost_length = len(fuel_cost)
+    fuel_cost = fuel_cost.loc[fuel_cost.index.repeat(len(inv_period))]
+    # Fill in different years and inflation values for the repeated rows
+    fuel_cost["period"] = inv_period * original_fuel_cost_length
+    inflation_factors = [
+        (1 + const.financial_parameters["interest_rate"])**(year - base_year)
+        for year in inv_period
+    ]
+    fuel_cost["inflation"] = inflation_factors * original_fuel_cost_length
+    # Use inflation values to calculate future fuel costs
+    fuel_cost["fuel_cost"] = fuel_cost["GenFuelCost"] * fuel_cost["inflation"]
+    fuel_cost["fuel_cost"] = fuel_cost["fuel_cost"].round(2)
+    # Clean up columns we don't need
+    fuel_cost.drop(columns=["GenFuelCost", "inflation"], inplace=True)
+    # Clean up any rows we don't need
+    fuel_cost = fuel_cost.query("fuel_cost > 0")
+
+    return fuel_cost
 
 
 def build_generation_projects_info():
