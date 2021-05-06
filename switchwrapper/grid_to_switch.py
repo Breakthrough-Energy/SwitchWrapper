@@ -6,9 +6,14 @@ from switchwrapper import const
 
 
 def grid_to_switch(grid, outputfolder):
+    # First, prompt the user for information not contained in const or the passed grid
     base_year = get_base_year()
     inv_period, period_start, period_end = get_inv_periods()
 
+    # Then, calculate information which feeds multiple data frames
+    cost_at_min_power, single_segment_slope = linearize_gencost(grid)
+
+    # Finally, generate and save data frames to CSVs
     financials_filepath = os.path.join(outputfolder, "financials.csv")
     build_financials(base_year).to_csv(financials_filepath, index=False)
 
@@ -26,7 +31,8 @@ def grid_to_switch(grid, outputfolder):
     )
 
     gen_build_costs_filepath = os.path.join(outputfolder, "gen_build_costs.csv")
-    build_gen_build_costs().to_csv(gen_build_costs_filepath, index=False)
+    gen_build_costs = build_gen_build_costs(grid, cost_at_min_power, inv_period)
+    gen_build_costs.to_csv(gen_build_costs_filepath, index=False)
 
     gen_build_predetermined_filepath = os.path.join(
         outputfolder, "gen_build_predetermined.csv"
@@ -116,6 +122,33 @@ def get_inv_periods():
     return inv_period, period_start, period_end
 
 
+def linearize_gencost(grid):
+    """Calculate linearized cost parameters, incorporating assumed minimum generation.
+
+    :param powersimdata.input.grid.Grid grid: grid instance.
+    :return: (*tuple*) -- two pandas Series objects, indexed by plant ID within ``grid``:
+        first is the cost of running each generator at minimum generation.
+        second is the single-segment linearized slope of each generator's cost curve.
+    """
+    plant_mod = grid.plant.copy()
+    plant_mod.Pmin = plant_mod.apply(
+        lambda x: x.Pmax * const.assumed_pmin.get(x.type, const.assumed_pmin["default"])
+        if const.assumed_pmin[x.type] != None else x.Pmin
+    )
+    gencost = grid.gencost["before"]
+    cost_at_min_power = (
+        gencost.c0 + gencost.c1 * plant_mod.Pmin + gencost.c2 * plant_mod.Pmin ** 2
+    )
+    cost_at_max_power = (
+        gencost.c0 + gencost.c1 * plant_mod.Pmax + gencost.c2 * plant_mod.Pmax ** 2
+    )
+    single_segment_slope = (
+        (cost_at_max_power - cost_at_min_power) / (plant_mod.Pmax - plant_mod.Pmin)
+    )
+    single_segment_slope.fillna(0, inplace=True)
+    return cost_at_min_power, single_segment_slope
+
+
 def build_financials(base_year):
     """Parse financial parameters constants and base year input to a data frame.
 
@@ -146,8 +179,40 @@ def build_generation_projects_info():
     pass
 
 
-def build_gen_build_costs():
-    pass
+def build_gen_build_costs(plant, cost_at_min_power, inv_period):
+    """Build a data frame of generation projects, both existing and hypothetical.
+
+    :param pandas.DataFrame plant: data frame of current generators.
+    :param pandas.Series cost_at_min_power: cost of running generator at minimum power.
+    :param list inv_period: list of investment period years.
+    :return: (*pandas.DataFrame*) -- data frame of existing and hypothetical generators.
+    """
+    # Build lists for each columns, which apply to one year
+    original_plant_indices = [f"g{p}" for p in plant.index.tolist()]
+    overnight_costs = plant["type"].map(const.investment_costs_by_type)
+    gen_fixed_om = (cost_at_min_power / plant.Pmax).fillna(0.0).tolist()
+
+    # Extend these lists to multiple years
+    build_years = [2019] + inv_period
+    hypothetical_plant_indices = [f"{o}i" for o in original_plant_indices]
+    plant_index_lists = (
+        [original_plant_indices] + [hypothetical_plant_indices for i in inv_period]
+    )
+    all_indices = sum(plant_index_lists, [])
+    all_build_years = sum([[b] * len(original_plant_indices) for b in build_years], [])
+    all_overnight_costs = sum([overnight_costs for b in build_years], [])
+    all_gen_fixed_om = sum([gen_fixed_om for b in build_years], [])
+
+    # Create a dataframe from the collected lists
+    gen_build_costs = pd.DataFrame(
+        {
+            "GENERATION_PROJECT": all_indices,
+            "build_year": all_build_years,
+            "gen_overnight_cost": all_overnight_costs,
+            "gen_fixed_om": all_gen_fixed_om,
+        }
+    )
+    return gen_build_costs
 
 
 def build_gen_build_predetermined():
