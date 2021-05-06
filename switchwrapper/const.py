@@ -5,6 +5,17 @@ financial_parameters = {
 
 fuels = ["Coal", "NaturalGas", "Uranium"]
 
+fuel_mapping = {
+    "wind": "Wind",
+    "wind_offshore": "Wind",
+    "solar": "Solar",
+    "hydro": "Water",
+    "geothermal": "Geothermal",
+    "coal": "Coal",
+    "ng": "NaturalGas",
+    "nuclear": "Uranium",
+}
+
 load_parameters = {
     "existing_local_td": 99999,
     "local_td_annual_cost_per_mw": 0,
