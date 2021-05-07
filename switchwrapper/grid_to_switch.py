@@ -326,8 +326,36 @@ def build_dclines(grid):
     return dcline.round(2)
 
 
-def build_transmission_lines():
-    pass
+def build_transmission_lines(grid):
+    """Parse branch and dcline data frames of a grid instance into a transmission
+    line data frame with new columns for length and efficiency.
+
+    :param powersimdata.input.grid.Grid grid: grid instance
+    :return: (*pandas.DataFrame*) -- transmission line data frame
+    """
+    acline = build_aclines(grid)
+    dcline = build_dclines(grid)
+    transmission_line = pd.concat([dcline, acline], ignore_index=True)
+    transmission_line.rename(
+        columns={
+            "branch_id": "TRANSMISSION_LINE",
+            "from_bus_id": "trans_lz1",
+            "to_bus_id": "trans_lz2",
+            "rateA": "existing_trans_cap",
+        },
+        inplace=True,
+    )
+    transmission_line = transmission_line[
+        [
+            "TRANSMISSION_LINE",
+            "trans_lz1",
+            "trans_lz2",
+            "trans_length_km",
+            "trans_efficiency",
+            "existing_trans_cap",
+        ]
+    ]
+    return transmission_line
 
 
 def build_trans_params():
