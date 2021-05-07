@@ -65,3 +65,20 @@ assumed_branch_efficiencies = {
     765: 0.99,
     "default": 0.99,
 }
+
+assumed_capacity_limits = {
+    "coal": 0,
+    "default": 5000,
+}
+
+assumed_fuel_share_of_gencost = 0.7
+
+assumed_ages_by_type = {
+    "hydro": 60,
+    "coal": 40,
+    "nuclear": 40,
+    "default": 20,
+}
+
+baseload_types = {"coal", "nuclear"}
+variable_types = {"hydro", "solar", "wind", "wind_offshore"}

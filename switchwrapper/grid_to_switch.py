@@ -32,9 +32,10 @@ def grid_to_switch(grid, outputfolder):
     generation_projects_info_filepath = os.path.join(
         outputfolder, "generation_projects_info.csv"
     )
-    build_generation_projects_info().to_csv(
-        generation_projects_info_filepath, index=False
+    generation_project_info = build_generation_projects_info(
+        grid.plant, single_segment_slope, average_fuel_cost
     )
+    generation_project_info.to_csv(generation_projects_info_filepath, index=False)
 
     gen_build_costs_filepath = os.path.join(outputfolder, "gen_build_costs.csv")
     gen_build_costs = build_gen_build_costs(grid.plant, cost_at_min_power, inv_period)
@@ -244,8 +245,63 @@ def build_fuel_cost(average_fuel_cost, base_year, inv_period):
     return fuel_cost
 
 
-def build_generation_projects_info():
-    pass
+def build_generation_projects_info(plant, single_segment_slope, average_fuel_cost):
+    """Build data frame for generation_projects_info.
+
+    :param pandas.DataFrame plant: data frame of current generators.
+    :param pandas.Series single_segment_slope: single-segment linearized slope of each
+        generator's cost curve, from :func:`linearize_gencost`.
+    :param pandas.DataFrame average_fuel_cost: average fuel cost by bus_id, from
+        :func:`calculate_average_fuel_cost`.
+        This is single-column ("GenFuelCost") and multi-index ("bus_id", "fuel").
+    :return: (*pandas.DataFrame*) -- data frame of generation project info.
+    """
+    # Extract information from inputs
+    original_plant_indices = [f"g{p}" for p in plant.index.tolist()]
+    hypothetical_plant_indices = [f"{o}i" for o in original_plant_indices]
+    all_plant_indices = original_plant_indices + hypothetical_plant_indices
+
+    # Use inputs for intermediate calculations
+    fuel_gencost = single_segment_slope * const.assumed_fuel_share_of_gencost
+    nonfuel_gencost = single_segment_slope * (1 - const.assumed_fuel_share_of_gencost)
+    fuel_cost_per_generator = plant.apply(
+        lambda x: average_fuel_cost.loc[
+            (x.bus_id, const.fuel_mapping[x.type]), "GenFuelCost"
+        ],
+        axis=1,
+    )
+    estimated_heatrate = (fuel_gencost / fuel_cost_per_generator).fillna(0)
+
+    # Finally, construct data frame and return
+    df = pd.DataFrame()
+    df["GENERATION_PROJECT"] = all_plant_indices
+    df["gen_tech"] = plant.type.tolist() * 2
+    df["gen_tech_zone"] = plant.bus_id.tolist() * 2
+    df["gen_connect_cost_per_mw"] = 0
+    df["gen_capacity_limit_mw"] = [
+        const.assumed_capacity_limits.get(t, const.assumed_capacity_limits["default"])
+        for t in plant.type.tolist() * 2
+    ]
+    df["gen_full_load_heat_rate"] = estimated_heatrate.tolist() * 2
+    df["gen_variable_om"] = nonfuel_gencost.tolist() * 2
+    df["gen_max_age"] = [
+        const.assumed_ages_by_type.get(t, const.assumed_ages_by_type["default"])
+        for t in plant.type.tolist() * 2
+    ]
+    df["gen_min_build_capacity"] = 0
+    df["gen_scheduled_outage_rate"] = 0
+    df["gen_forced_outage_rate"] = 0
+    df["gen_is_variable"] = list(plant.type.isin(const.variable_types).astype(int)) * 2
+    df["gen_is_baseload"] = list(plant.type.isin(const.baseload_types).astype(int)) * 2
+    df["gen_is_cogen"] = 0
+    df["gen_energy_source"] = plant.type.map(const.fuel_mapping).tolist() * 2
+    df["gen_unit_size"] = "."
+    df["gen_ccs_capture_efficiency"] = "."
+    df["gen_ccs_energy_load"] = "."
+    df["gen_storage_efficiency"] = "."
+    df["gen_store_to_release_ratio"] = "."
+
+    return df
 
 
 def build_gen_build_costs(plant, cost_at_min_power, inv_period):
