@@ -135,8 +135,11 @@ def linearize_gencost(grid):
     """
     plant_mod = grid.plant.copy()
     plant_mod.Pmin = plant_mod.apply(
-        lambda x: x.Pmax * const.assumed_pmin.get(x.type, const.assumed_pmin["default"])
-        if const.assumed_pmin[x.type] != None else x.Pmin
+        lambda x:
+        x.Pmax * const.assumed_pmins.get(x.type, const.assumed_pmins["default"])
+        if const.assumed_pmins.get(x.type, const.assumed_pmins["default"]) != None
+        else x.Pmin,
+        axis=1,
     )
     gencost = grid.gencost["before"]
     cost_at_min_power = (
