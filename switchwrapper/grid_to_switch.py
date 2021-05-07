@@ -34,7 +34,7 @@ def grid_to_switch(grid, outputfolder):
     )
 
     gen_build_costs_filepath = os.path.join(outputfolder, "gen_build_costs.csv")
-    gen_build_costs = build_gen_build_costs(grid, cost_at_min_power, inv_period)
+    gen_build_costs = build_gen_build_costs(grid.plant, cost_at_min_power, inv_period)
     gen_build_costs.to_csv(gen_build_costs_filepath, index=False)
 
     gen_build_predetermined_filepath = os.path.join(
@@ -135,8 +135,11 @@ def linearize_gencost(grid):
     """
     plant_mod = grid.plant.copy()
     plant_mod.Pmin = plant_mod.apply(
-        lambda x: x.Pmax * const.assumed_pmin.get(x.type, const.assumed_pmin["default"])
-        if const.assumed_pmin[x.type] != None else x.Pmin
+        lambda x:
+        x.Pmax * const.assumed_pmins.get(x.type, const.assumed_pmins["default"])
+        if const.assumed_pmins.get(x.type, const.assumed_pmins["default"]) != None
+        else x.Pmin,
+        axis=1,
     )
     gencost = grid.gencost["before"]
     cost_at_min_power = (
@@ -192,7 +195,7 @@ def build_gen_build_costs(plant, cost_at_min_power, inv_period):
     """
     # Build lists for each columns, which apply to one year
     original_plant_indices = [f"g{p}" for p in plant.index.tolist()]
-    overnight_costs = plant["type"].map(const.investment_costs_by_type)
+    overnight_costs = plant["type"].map(const.investment_costs_by_type).tolist()
     gen_fixed_om = (cost_at_min_power / plant.Pmax).fillna(0.0).tolist()
 
     # Extend these lists to multiple years
