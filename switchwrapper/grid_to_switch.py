@@ -135,8 +135,8 @@ def linearize_gencost(grid):
     """
     plant_mod = grid.plant.copy()
     plant_mod.Pmin = plant_mod.apply(
-        lambda x:
-        x.Pmax * const.assumed_pmins.get(x.type, const.assumed_pmins["default"])
+        lambda x: x.Pmax
+        * const.assumed_pmins.get(x.type, const.assumed_pmins["default"])
         if const.assumed_pmins.get(x.type, const.assumed_pmins["default"]) != None
         else x.Pmin,
         axis=1,
@@ -148,8 +148,8 @@ def linearize_gencost(grid):
     cost_at_max_power = (
         gencost.c0 + gencost.c1 * plant_mod.Pmax + gencost.c2 * plant_mod.Pmax ** 2
     )
-    single_segment_slope = (
-        (cost_at_max_power - cost_at_min_power) / (plant_mod.Pmax - plant_mod.Pmin)
+    single_segment_slope = (cost_at_max_power - cost_at_min_power) / (
+        plant_mod.Pmax - plant_mod.Pmin
     )
     single_segment_slope.fillna(0, inplace=True)
     return cost_at_min_power, single_segment_slope
@@ -201,9 +201,9 @@ def build_gen_build_costs(plant, cost_at_min_power, inv_period):
     # Extend these lists to multiple years
     build_years = [2019] + inv_period
     hypothetical_plant_indices = [f"{o}i" for o in original_plant_indices]
-    plant_index_lists = (
-        [original_plant_indices] + [hypothetical_plant_indices for i in inv_period]
-    )
+    plant_index_lists = [original_plant_indices] + [
+        hypothetical_plant_indices for i in inv_period
+    ]
     all_indices = sum(plant_index_lists, [])
     all_build_years = sum([[b] * len(original_plant_indices) for b in build_years], [])
     all_overnight_costs = sum([overnight_costs for b in build_years], [])
@@ -262,6 +262,21 @@ def build_periods(inv_period, period_start, period_end):
     periods["period_start"] = period_start
     periods["period_end"] = period_end
     return periods
+
+
+def branch_efficiency(from_bus_voltage, to_bus_voltage):
+    """Calculate branch efficiency based on start and end bus baseKV.
+
+    :param int/float from_bus_voltage: start bus baseKV
+    :param int/float to_bus_voltage: end bus baseKV
+    :return: (*float*) -- efficiency rate of a branch
+    """
+    if from_bus_voltage == to_bus_voltage:
+        return const.assumed_branch_efficiencies.get(
+            from_bus_voltage, const.assumed_branch_efficiencies["default"]
+        )
+    else:
+        return const.assumed_branch_efficiencies["default"]
 
 
 def build_transmission_lines():
