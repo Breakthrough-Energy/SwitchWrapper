@@ -1,2 +1,4 @@
 haversine
-pandas=1.2.3
+pandas==1.2.3
+-e git+https://github.com/Breakthrough-Energy/PowerSimData#egg=PowerSimData
+pytest
