@@ -80,4 +80,5 @@ assumed_ages_by_type = {
     "default": 20,
 }
 
+baseload_types = {"coal", "nuclear"}
 variable_types = {"hydro", "solar", "wind", "wind_offshore"}
