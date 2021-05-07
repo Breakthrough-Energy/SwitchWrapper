@@ -65,3 +65,8 @@ assumed_branch_efficiencies = {
     765: 0.99,
     "default": 0.99,
 }
+
+assumed_capacity_limits = {
+    "coal": 0,
+    "default": 5000,
+}
