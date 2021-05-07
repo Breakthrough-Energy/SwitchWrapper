@@ -1,6 +1,7 @@
 import os
 
 import pandas as pd
+from haversine import haversine
 
 from switchwrapper import const
 
@@ -277,6 +278,31 @@ def branch_efficiency(from_bus_voltage, to_bus_voltage):
         )
     else:
         return const.assumed_branch_efficiencies["default"]
+
+
+def build_aclines(grid):
+    """Create a data frame for ac transmission lines with required columns for
+    :func:`build_transmission_lines`.
+
+    :param powersimdata.input.grid.Grid grid: grid instance
+    :return: (*pandas.DataFrame*) -- ac transmission line data frame
+    """
+    acline = grid.branch[["from_bus_id", "to_bus_id", "rateA"]].reset_index()
+    acline["trans_length_km"] = list(
+        map(
+            haversine,
+            grid.bus.loc[acline["from_bus_id"], ["lat", "lon"]].values,
+            grid.bus.loc[acline["to_bus_id"], ["lat", "lon"]].values,
+        )
+    )
+    acline["trans_efficiency"] = list(
+        map(
+            branch_efficiency,
+            grid.bus.loc[acline["from_bus_id"], "baseKV"],
+            grid.bus.loc[acline["to_bus_id"], "baseKV"],
+        )
+    )
+    return acline.round(2)
 
 
 def build_transmission_lines():
