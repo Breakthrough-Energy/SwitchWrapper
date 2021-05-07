@@ -1,6 +1,7 @@
 import os
 
 import pandas as pd
+from haversine import haversine
 
 from switchwrapper import const
 
@@ -135,8 +136,8 @@ def linearize_gencost(grid):
     """
     plant_mod = grid.plant.copy()
     plant_mod.Pmin = plant_mod.apply(
-        lambda x:
-        x.Pmax * const.assumed_pmins.get(x.type, const.assumed_pmins["default"])
+        lambda x: x.Pmax
+        * const.assumed_pmins.get(x.type, const.assumed_pmins["default"])
         if const.assumed_pmins.get(x.type, const.assumed_pmins["default"]) != None
         else x.Pmin,
         axis=1,
@@ -148,8 +149,8 @@ def linearize_gencost(grid):
     cost_at_max_power = (
         gencost.c0 + gencost.c1 * plant_mod.Pmax + gencost.c2 * plant_mod.Pmax ** 2
     )
-    single_segment_slope = (
-        (cost_at_max_power - cost_at_min_power) / (plant_mod.Pmax - plant_mod.Pmin)
+    single_segment_slope = (cost_at_max_power - cost_at_min_power) / (
+        plant_mod.Pmax - plant_mod.Pmin
     )
     single_segment_slope.fillna(0, inplace=True)
     return cost_at_min_power, single_segment_slope
@@ -201,9 +202,9 @@ def build_gen_build_costs(plant, cost_at_min_power, inv_period):
     # Extend these lists to multiple years
     build_years = [2019] + inv_period
     hypothetical_plant_indices = [f"{o}i" for o in original_plant_indices]
-    plant_index_lists = (
-        [original_plant_indices] + [hypothetical_plant_indices for i in inv_period]
-    )
+    plant_index_lists = [original_plant_indices] + [
+        hypothetical_plant_indices for i in inv_period
+    ]
     all_indices = sum(plant_index_lists, [])
     all_build_years = sum([[b] * len(original_plant_indices) for b in build_years], [])
     all_overnight_costs = sum([overnight_costs for b in build_years], [])
@@ -264,8 +265,97 @@ def build_periods(inv_period, period_start, period_end):
     return periods
 
 
-def build_transmission_lines():
-    pass
+def branch_efficiency(from_bus_voltage, to_bus_voltage):
+    """Calculate branch efficiency based on start and end bus baseKV.
+
+    :param int/float from_bus_voltage: start bus baseKV
+    :param int/float to_bus_voltage: end bus baseKV
+    :return: (*float*) -- efficiency rate of a branch
+    """
+    if from_bus_voltage == to_bus_voltage:
+        return const.assumed_branch_efficiencies.get(
+            from_bus_voltage, const.assumed_branch_efficiencies["default"]
+        )
+    else:
+        return const.assumed_branch_efficiencies["default"]
+
+
+def build_aclines(grid):
+    """Create a data frame for ac transmission lines with required columns for
+    :func:`build_transmission_lines`.
+
+    :param powersimdata.input.grid.Grid grid: grid instance
+    :return: (*pandas.DataFrame*) -- ac transmission line data frame
+    """
+    acline = grid.branch[["from_bus_id", "to_bus_id", "rateA"]].reset_index()
+    acline["trans_length_km"] = list(
+        map(
+            haversine,
+            grid.bus.loc[acline["from_bus_id"], ["lat", "lon"]].values,
+            grid.bus.loc[acline["to_bus_id"], ["lat", "lon"]].values,
+        )
+    )
+    acline["trans_efficiency"] = list(
+        map(
+            branch_efficiency,
+            grid.bus.loc[acline["from_bus_id"], "baseKV"],
+            grid.bus.loc[acline["to_bus_id"], "baseKV"],
+        )
+    )
+    return acline.round(2)
+
+
+def build_dclines(grid):
+    """Create a data frame for dc transmission lines with required columns for
+    :func:`build_transmission_lines`.
+
+    :param powersimdata.input.grid.Grid grid: grid instance
+    :return: (*pandas.DataFrame*) -- dc transmission line data frame
+    """
+    dcline = grid.dcline[["from_bus_id", "to_bus_id", "Pmax"]].reset_index()
+    dcline["trans_length_km"] = list(
+        map(
+            haversine,
+            grid.bus.loc[dcline["from_bus_id"], ["lat", "lon"]].values,
+            grid.bus.loc[dcline["to_bus_id"], ["lat", "lon"]].values,
+        )
+    )
+    dcline["trans_efficiency"] = 0.99
+    dcline["dcline_id"] = dcline["dcline_id"].apply(lambda x: str(x) + "dl")
+    dcline.rename(columns={"dcline_id": "branch_id", "Pmax": "rateA"}, inplace=True)
+    return dcline.round(2)
+
+
+def build_transmission_lines(grid):
+    """Parse branch and dcline data frames of a grid instance into a transmission
+    line data frame with new columns for length and efficiency.
+
+    :param powersimdata.input.grid.Grid grid: grid instance
+    :return: (*pandas.DataFrame*) -- transmission line data frame
+    """
+    acline = build_aclines(grid)
+    dcline = build_dclines(grid)
+    transmission_line = pd.concat([dcline, acline], ignore_index=True)
+    transmission_line.rename(
+        columns={
+            "branch_id": "TRANSMISSION_LINE",
+            "from_bus_id": "trans_lz1",
+            "to_bus_id": "trans_lz2",
+            "rateA": "existing_trans_cap",
+        },
+        inplace=True,
+    )
+    transmission_line = transmission_line[
+        [
+            "TRANSMISSION_LINE",
+            "trans_lz1",
+            "trans_lz2",
+            "trans_length_km",
+            "trans_efficiency",
+            "existing_trans_cap",
+        ]
+    ]
+    return transmission_line
 
 
 def build_trans_params():
