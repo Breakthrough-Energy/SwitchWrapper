@@ -43,3 +43,14 @@ assumed_pmins = {
     "geothermal": 0.95,
     "nuclear": 0.95,
 }
+
+assumed_branch_efficiencies = {
+    115: 0.9,
+    138: 0.94,
+    161: 0.96,
+    230: 0.97,
+    345: 0.98,
+    500: 0.99,
+    765: 0.99,
+    "default": 0.99,
+}
