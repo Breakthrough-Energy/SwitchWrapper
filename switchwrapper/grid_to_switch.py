@@ -43,7 +43,7 @@ def grid_to_switch(grid, outputfolder):
     gen_build_predetermined_filepath = os.path.join(
         outputfolder, "gen_build_predetermined.csv"
     )
-    build_gen_build_predetermined().to_csv(
+    build_gen_build_predetermined(grid.plant).to_csv(
         gen_build_predetermined_filepath, index=False
     )
 
@@ -61,7 +61,7 @@ def grid_to_switch(grid, outputfolder):
     )
 
     transmission_lines_filepath = os.path.join(outputfolder, "transmission_lines.csv")
-    build_transmission_lines().to_csv(transmission_lines_filepath, index=False)
+    build_transmission_lines(grid).to_csv(transmission_lines_filepath, index=False)
 
     trans_params_filepath = os.path.join(outputfolder, "trans_params.csv")
     build_trans_params().to_csv(trans_params_filepath, index=False)
@@ -284,8 +284,25 @@ def build_gen_build_costs(plant, cost_at_min_power, inv_period):
     return gen_build_costs
 
 
-def build_gen_build_predetermined():
-    pass
+def build_gen_build_predetermined(plant):
+    """Build a data frame of generator capacity and build year
+
+    :param pandas.DataFrame plant: data frame of generators in a grid instance.
+    :return: (*pandas.DataFrame*) -- data frame of existing generators.
+    """
+    gen_build_predetermined = plant["Pmax"].reset_index()
+    gen_build_predetermined["build_year"] = 2019
+    gen_build_predetermined.rename(
+        columns={
+            "plant_id": "GENERATION_PROJECT",
+            "Pmax": "gen_predetermined_cap",
+        },
+        inplace=True,
+    )
+    gen_build_predetermined = gen_build_predetermined[
+        ["GENERATION_PROJECT", "build_year", "gen_predetermined_cap"]
+    ]
+    return gen_build_predetermined
 
 
 def build_load_zones(bus):
