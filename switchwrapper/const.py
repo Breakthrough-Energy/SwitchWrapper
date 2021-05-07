@@ -72,3 +72,10 @@ assumed_capacity_limits = {
 }
 
 assumed_fuel_share_of_gencost = 0.7
+
+assumed_ages_by_type = {
+    "hydro": 60,
+    "coal": 40,
+    "nuclear": 40,
+    "default": 20,
+}
