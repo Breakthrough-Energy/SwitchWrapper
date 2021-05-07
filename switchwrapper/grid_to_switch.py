@@ -61,7 +61,7 @@ def grid_to_switch(grid, outputfolder):
     )
 
     transmission_lines_filepath = os.path.join(outputfolder, "transmission_lines.csv")
-    build_transmission_lines().to_csv(transmission_lines_filepath, index=False)
+    build_transmission_lines(grid).to_csv(transmission_lines_filepath, index=False)
 
     trans_params_filepath = os.path.join(outputfolder, "trans_params.csv")
     build_trans_params().to_csv(trans_params_filepath, index=False)
