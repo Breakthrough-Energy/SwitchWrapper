@@ -16,6 +16,7 @@ def grid_to_switch(grid, outputfolder):
 
     # Then, calculate information which feeds multiple data frames
     cost_at_min_power, single_segment_slope = linearize_gencost(grid)
+    average_fuel_cost = calculate_average_fuel_cost(grid.plant)
 
     # Finally, generate and save data frames to CSVs
     financials_filepath = os.path.join(outputfolder, "financials.csv")
@@ -25,7 +26,7 @@ def grid_to_switch(grid, outputfolder):
     build_fuels().to_csv(fuels_filepath, index=False)
 
     fuel_cost_filepath = os.path.join(outputfolder, "fuel_cost.csv")
-    fuel_cost = build_fuel_cost(grid.plant, base_year, inv_period)
+    fuel_cost = build_fuel_cost(average_fuel_cost, base_year, inv_period)
     fuel_cost.to_csv(fuel_cost_filepath, index=False)
 
     generation_projects_info_filepath = os.path.join(
@@ -143,6 +144,21 @@ def get_inv_periods():
     return inv_period, period_start, period_end
 
 
+def calculate_average_fuel_cost(plant):
+    """Calculate average fuel cost, by bus_id for buses containing generators.
+
+    :param pandas.DataFrame plant: plant data from a Grid object.
+    :return: (*pandas.DataFrame*) -- data frame of average fuel cost by bus_id.
+    """
+    plant_mod = plant.copy()
+    # Map our generator types to Switch fuel types
+    plant_mod["fuel"] = plant_mod["type"].map(const.fuel_mapping)
+    # Calculate the average fuel cost for each (bus_id, fuel)
+    relevant_fuel_columns = ["bus_id", "fuel", "GenFuelCost"]
+    fuel_cost = plant_mod[relevant_fuel_columns].groupby(["bus_id", "fuel"]).mean()
+    return fuel_cost
+
+
 def linearize_gencost(grid):
     """Calculate linearized cost parameters, incorporating assumed minimum generation.
 
@@ -195,20 +211,15 @@ def build_fuels():
     return fuels
 
 
-def build_fuel_cost(plant, base_year, inv_period):
+def build_fuel_cost(average_fuel_cost, base_year, inv_period):
     """Create a data frame of average fuel costs by zone and fuel, and project these
         costs to future years.
 
-    :param pandas.DataFrame plant: plant data from a Grid object.
+    :param pandas.DataFrame average_fuel_cost: average fuel cost by bus_id.
     :param list inv_period: list of investment period years, as integers.
     :return: (*pandas.DataFrame*) -- data frame of fuel costs by period, zone, and fuel.
     """
-    plant_mod = plant.copy()
-    # Map our generator types to Switch fuel types
-    plant_mod["fuel"] = plant_mod["type"].map(const.fuel_mapping)
-    # Calculate the average fuel cost for each (bus_id, fuel)
-    relevant_fuel_columns = ["bus_id", "fuel", "GenFuelCost"]
-    fuel_cost = plant_mod[relevant_fuel_columns].groupby(["bus_id", "fuel"]).mean()
+    fuel_cost = average_fuel_cost.copy()
     # Retrieve the original `bus_id` and `fuel` columns, rename `bus_id` to `load_zone`
     fuel_cost.reset_index(inplace=True)
     fuel_cost.rename(columns={"bus_id": "load_zone"})
