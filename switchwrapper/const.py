@@ -79,3 +79,5 @@ assumed_ages_by_type = {
     "nuclear": 40,
     "default": 20,
 }
+
+variable_types = {"hydro", "solar", "wind", "wind_offshore"}
