@@ -16,6 +16,7 @@ def grid_to_switch(grid, outputfolder):
 
     # Then, calculate information which feeds multiple data frames
     cost_at_min_power, single_segment_slope = linearize_gencost(grid)
+    average_fuel_cost = calculate_average_fuel_cost(grid.plant)
 
     # Finally, generate and save data frames to CSVs
     financials_filepath = os.path.join(outputfolder, "financials.csv")
@@ -25,7 +26,8 @@ def grid_to_switch(grid, outputfolder):
     build_fuels().to_csv(fuels_filepath, index=False)
 
     fuel_cost_filepath = os.path.join(outputfolder, "fuel_cost.csv")
-    build_fuel_cost().to_csv(fuel_cost_filepath, index=False)
+    fuel_cost = build_fuel_cost(average_fuel_cost, base_year, inv_period)
+    fuel_cost.to_csv(fuel_cost_filepath, index=False)
 
     generation_projects_info_filepath = os.path.join(
         outputfolder, "generation_projects_info.csv"
@@ -68,9 +70,10 @@ def grid_to_switch(grid, outputfolder):
 def get_base_year():
     """Prompt the user for a base year.
 
-    :return: (*str*) -- base year.
+    :return: (*int*) -- base year.
     """
-    return input("Please enter base study year (normally PowerSimData scenario year): ")
+    year = input("Please enter base study year (normally PowerSimData scenario year): ")
+    return int(year)
 
 
 def get_inv_periods():
@@ -96,7 +99,12 @@ def get_inv_periods():
             "Please enter investment period year, separate by space: "
         ).split()
         if len(inv_period) == num_inv_stages:
-            break
+            try:
+                inv_period = [int(i) for i in inv_period]
+                break
+            except ValueError:
+                print("All investment period years must be integers, please re-enter.")
+                continue
         print(
             "investment period must match the number of investment stages, "
             "please re-enter."
@@ -107,7 +115,12 @@ def get_inv_periods():
             "Please enter start year for each period, separate by space: "
         ).split()
         if len(period_start) == num_inv_stages:
-            break
+            try:
+                period_start = [int(p) for p in period_start]
+                break
+            except ValueError:
+                print("All start years must be integers, please re-enter.")
+                continue
         print(
             "start year for each period must match the number of investment stages, "
             "please re-enter."
@@ -118,12 +131,32 @@ def get_inv_periods():
             "Please enter end year for each period, separate by space: "
         ).split()
         if len(period_end) == num_inv_stages:
-            break
+            try:
+                period_end = [int(p) for p in period_end]
+                break
+            except ValueError:
+                print("All end years must be integers, please re-enter.")
+                continue
         print(
             "end year for each period must match the number of investment stages, "
             "please re-enter."
         )
     return inv_period, period_start, period_end
+
+
+def calculate_average_fuel_cost(plant):
+    """Calculate average fuel cost, by bus_id for buses containing generators.
+
+    :param pandas.DataFrame plant: plant data from a Grid object.
+    :return: (*pandas.DataFrame*) -- data frame of average fuel cost by bus_id.
+    """
+    plant_mod = plant.copy()
+    # Map our generator types to Switch fuel types
+    plant_mod["fuel"] = plant_mod["type"].map(const.fuel_mapping)
+    # Calculate the average fuel cost for each (bus_id, fuel)
+    relevant_fuel_columns = ["bus_id", "fuel", "GenFuelCost"]
+    fuel_cost = plant_mod[relevant_fuel_columns].groupby(["bus_id", "fuel"]).mean()
+    return fuel_cost
 
 
 def linearize_gencost(grid):
@@ -178,8 +211,37 @@ def build_fuels():
     return fuels
 
 
-def build_fuel_cost():
-    pass
+def build_fuel_cost(average_fuel_cost, base_year, inv_period):
+    """Create a data frame of average fuel costs by zone and fuel, and project these
+        costs to future years.
+
+    :param pandas.DataFrame average_fuel_cost: average fuel cost by bus_id.
+    :param list inv_period: list of investment period years, as integers.
+    :return: (*pandas.DataFrame*) -- data frame of fuel costs by period, zone, and fuel.
+    """
+    fuel_cost = average_fuel_cost.copy()
+    # Retrieve the original `bus_id` and `fuel` columns, rename `bus_id` to `load_zone`
+    fuel_cost.reset_index(inplace=True)
+    fuel_cost.rename(columns={"bus_id": "load_zone"})
+    # Duplicate each row N times, where N is the number of investment years
+    original_fuel_cost_length = len(fuel_cost)
+    fuel_cost = fuel_cost.loc[fuel_cost.index.repeat(len(inv_period))]
+    # Fill in different years and inflation values for the repeated rows
+    fuel_cost["period"] = inv_period * original_fuel_cost_length
+    inflation_factors = [
+        (1 + const.financial_parameters["interest_rate"])**(year - base_year)
+        for year in inv_period
+    ]
+    fuel_cost["inflation"] = inflation_factors * original_fuel_cost_length
+    # Use inflation values to calculate future fuel costs
+    fuel_cost["fuel_cost"] = fuel_cost["GenFuelCost"] * fuel_cost["inflation"]
+    fuel_cost["fuel_cost"] = fuel_cost["fuel_cost"].round(2)
+    # Clean up columns we don't need
+    fuel_cost.drop(columns=["GenFuelCost", "inflation"], inplace=True)
+    # Clean up any rows we don't need
+    fuel_cost = fuel_cost.query("fuel_cost > 0")
+
+    return fuel_cost
 
 
 def build_generation_projects_info():
