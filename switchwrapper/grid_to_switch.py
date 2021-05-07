@@ -25,7 +25,8 @@ def grid_to_switch(grid, outputfolder):
     build_fuels().to_csv(fuels_filepath, index=False)
 
     fuel_cost_filepath = os.path.join(outputfolder, "fuel_cost.csv")
-    build_fuel_cost().to_csv(fuel_cost_filepath, index=False)
+    fuel_cost = build_fuel_cost(grid.plant, base_year, inv_period)
+    fuel_cost.to_csv(fuel_cost_filepath, index=False)
 
     generation_projects_info_filepath = os.path.join(
         outputfolder, "generation_projects_info.csv"
