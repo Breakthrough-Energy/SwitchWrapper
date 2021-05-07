@@ -70,3 +70,5 @@ assumed_capacity_limits = {
     "coal": 0,
     "default": 5000,
 }
+
+assumed_fuel_share_of_gencost = 0.7
