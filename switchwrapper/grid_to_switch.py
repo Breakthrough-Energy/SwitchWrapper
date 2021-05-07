@@ -305,6 +305,27 @@ def build_aclines(grid):
     return acline.round(2)
 
 
+def build_dclines(grid):
+    """Create a data frame for dc transmission lines with required columns for
+    :func:`build_transmission_lines`.
+
+    :param powersimdata.input.grid.Grid grid: grid instance
+    :return: (*pandas.DataFrame*) -- dc transmission line data frame
+    """
+    dcline = grid.dcline[["from_bus_id", "to_bus_id", "Pmax"]].reset_index()
+    dcline["trans_length_km"] = list(
+        map(
+            haversine,
+            grid.bus.loc[dcline["from_bus_id"], ["lat", "lon"]].values,
+            grid.bus.loc[dcline["to_bus_id"], ["lat", "lon"]].values,
+        )
+    )
+    dcline["trans_efficiency"] = 0.99
+    dcline["dcline_id"] = dcline["dcline_id"].apply(lambda x: str(x) + "dl")
+    dcline.rename(columns={"dcline_id": "branch_id", "Pmax": "rateA"}, inplace=True)
+    return dcline.round(2)
+
+
 def build_transmission_lines():
     pass
 
