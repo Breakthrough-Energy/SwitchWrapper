@@ -170,8 +170,8 @@ def linearize_gencost(grid):
     """
     plant_mod = grid.plant.copy()
     plant_mod.Pmin = plant_mod.apply(
-        lambda x:
-        x.Pmax * const.assumed_pmins.get(x.type, const.assumed_pmins["default"])
+        lambda x: x.Pmax
+        * const.assumed_pmins.get(x.type, const.assumed_pmins["default"])
         if const.assumed_pmins.get(x.type, const.assumed_pmins["default"]) is not None
         else x.Pmin,
         axis=1,
@@ -230,7 +230,7 @@ def build_fuel_cost(average_fuel_cost, base_year, inv_period):
     # Fill in different years and inflation values for the repeated rows
     fuel_cost["period"] = inv_period * original_fuel_cost_length
     inflation_factors = [
-        (1 + const.financial_parameters["interest_rate"])**(year - base_year)
+        (1 + const.financial_parameters["interest_rate"]) ** (year - base_year)
         for year in inv_period
     ]
     fuel_cost["inflation"] = inflation_factors * original_fuel_cost_length
