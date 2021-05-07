@@ -195,7 +195,7 @@ def build_gen_build_costs(plant, cost_at_min_power, inv_period):
     """
     # Build lists for each columns, which apply to one year
     original_plant_indices = [f"g{p}" for p in plant.index.tolist()]
-    overnight_costs = plant["type"].map(const.investment_costs_by_type)
+    overnight_costs = plant["type"].map(const.investment_costs_by_type).tolist()
     gen_fixed_om = (cost_at_min_power / plant.Pmax).fillna(0.0).tolist()
 
     # Extend these lists to multiple years
