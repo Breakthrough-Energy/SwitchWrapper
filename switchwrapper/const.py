@@ -3,7 +3,7 @@ financial_parameters = {
     "interest_rate": 0.029,
 }
 
-fuels = ["Coal", "NaturalGas", "Uranium"]
+fuels = ["Coal", "NaturalGas", "Uranium", "Petroleum", "Other"]
 
 fuel_mapping = {
     "wind": "Wind",
@@ -14,6 +14,8 @@ fuel_mapping = {
     "coal": "Coal",
     "ng": "NaturalGas",
     "nuclear": "Uranium",
+    "dfo": "Petroleum",
+    "other": "Other",
 }
 
 load_parameters = {
