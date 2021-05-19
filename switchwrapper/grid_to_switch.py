@@ -7,6 +7,12 @@ from switchwrapper import const
 
 
 def grid_to_switch(grid, outputfolder):
+    """Convert relevant data from a Grid object and command-line-prompted user inputs
+    to CSVs for use with Switch.
+
+    :param powersimdata.input.grid.Grid grid: grid instance.
+    :param str outputfolder: the location to save outputs, will be created if necessary.
+    """
     # Create the outputfolder, if it doesn't already exist
     os.makedirs(outputfolder, exist_ok=True)
 
