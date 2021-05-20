@@ -7,7 +7,7 @@ def profiles_to_switch(
     grid,
     profiles,
     timepoints,
-    timeseries_to_duration,
+    timeseries,
     timestamp_to_timepoints,
     output_folder,
 ):
@@ -22,8 +22,8 @@ def profiles_to_switch(
         representing plant IDs (for hydro, solar, and wind) or zone IDs (for demand).
     :param pandas.DataFrame timepoints: data frame, indexed by timepoint_id, with
         columns 'timestamp' and 'timeseries'.
-    :param pandas.Series timeseries_to_duration: durations (values) of each timeseries
-        (index).
+    :param pandas.DataFrame timeseries: data frame, indexed by timeseries, with columns
+        'ts_period' and 'ts_duration'.
     :param pandas.Series timestamp_to_timepoints: timepoints (values) of each timestamp
         (index).
     :param str output_folder: the location to save outputs, created as necessary.
@@ -36,10 +36,8 @@ def profiles_to_switch(
     loads.to_csv(loads_filepath)
 
     timeseries_filepath = os.path.join(output_folder, "timeseries.csv")
-    timeseries = build_timeseries(
-        timeseries_to_duration, timestamp_to_timepoints, timepoints
-    )
-    timeseries.to_csv(timeseries_filepath, index=False)
+    timeseries_df = build_timeseries(timeseries, timestamp_to_timepoints, timepoints)
+    timeseries_df.to_csv(timeseries_filepath, index=False)
 
     variable_capacity_factors_filepath = os.path.join(
         output_folder, "variable_capacity_factors.csv"
@@ -78,12 +76,12 @@ def build_loads(bus, demand, timestamp_to_timepoints):
     return timepoint_demand
 
 
-def build_timeseries(timeseries_to_duration, timestamp_to_timepoints, timepoints):
-    """Add extra information to ``timeseries_to_duration``, based on the information in
+def build_timeseries(timeseries, timestamp_to_timepoints, timepoints):
+    """Add extra information to ``timeseries``, based on the information in
     ``timestamp_to_timepoints`` and ``timepoints``.
 
-    :param pandas.Series timeseries_to_duration: durations (values) of each timeseries
-        (index).
+    :param pandas.DataFrame timeseries: data frame, indexed by timeseries, with columns
+        'ts_period' and 'ts_duration'.
     :param pandas.Series timestamp_to_timepoints: timepoints (values) of each timestamp
         (index).
     :param pandas.DataFrame timepoints: data frame, indexed by timepoint_id, with
