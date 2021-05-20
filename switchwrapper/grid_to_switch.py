@@ -213,7 +213,7 @@ def build_fuels():
     :return: (*pandas.DataFrame*) -- single-row data frame with all params.
     """
     fuels = pd.DataFrame({"fuel": const.fuels})
-    fuels["co2_intensity"] = "."
+    fuels["co2_intensity"] = "0"
     fuels["upstream_co2_intensity"] = "."
     return fuels
 
