@@ -6,9 +6,15 @@ from haversine import haversine
 from switchwrapper import const
 
 
-def grid_to_switch(grid, outputfolder):
-    # Create the outputfolder, if it doesn't already exist
-    os.makedirs(outputfolder, exist_ok=True)
+def grid_to_switch(grid, output_folder):
+    """Convert relevant data from a Grid object and command-line-prompted user inputs
+    to CSVs for use with Switch.
+
+    :param powersimdata.input.grid.Grid grid: grid instance.
+    :param str output_folder: the location to save outputs, created as necessary.
+    """
+    # Create the output folder, if it doesn't already exist
+    os.makedirs(output_folder, exist_ok=True)
 
     # First, prompt the user for information not contained in const or the passed grid
     base_year = get_base_year()
@@ -19,52 +25,52 @@ def grid_to_switch(grid, outputfolder):
     average_fuel_cost = calculate_average_fuel_cost(grid.plant)
 
     # Finally, generate and save data frames to CSVs
-    financials_filepath = os.path.join(outputfolder, "financials.csv")
+    financials_filepath = os.path.join(output_folder, "financials.csv")
     build_financials(base_year).to_csv(financials_filepath, index=False)
 
-    fuels_filepath = os.path.join(outputfolder, "fuels.csv")
+    fuels_filepath = os.path.join(output_folder, "fuels.csv")
     build_fuels().to_csv(fuels_filepath, index=False)
 
-    fuel_cost_filepath = os.path.join(outputfolder, "fuel_cost.csv")
+    fuel_cost_filepath = os.path.join(output_folder, "fuel_cost.csv")
     fuel_cost = build_fuel_cost(average_fuel_cost, base_year, inv_period)
     fuel_cost.to_csv(fuel_cost_filepath, index=False)
 
     generation_projects_info_filepath = os.path.join(
-        outputfolder, "generation_projects_info.csv"
+        output_folder, "generation_projects_info.csv"
     )
     generation_project_info = build_generation_projects_info(
         grid.plant, single_segment_slope, average_fuel_cost
     )
     generation_project_info.to_csv(generation_projects_info_filepath, index=False)
 
-    gen_build_costs_filepath = os.path.join(outputfolder, "gen_build_costs.csv")
+    gen_build_costs_filepath = os.path.join(output_folder, "gen_build_costs.csv")
     gen_build_costs = build_gen_build_costs(grid.plant, cost_at_min_power, inv_period)
     gen_build_costs.to_csv(gen_build_costs_filepath, index=False)
 
     gen_build_predetermined_filepath = os.path.join(
-        outputfolder, "gen_build_predetermined.csv"
+        output_folder, "gen_build_predetermined.csv"
     )
     build_gen_build_predetermined(grid.plant).to_csv(
         gen_build_predetermined_filepath, index=False
     )
 
-    load_zones_filepath = os.path.join(outputfolder, "load_zones.csv")
+    load_zones_filepath = os.path.join(output_folder, "load_zones.csv")
     build_load_zones(grid.bus).to_csv(load_zones_filepath, index=False)
 
     non_fuel_energy_source_filepath = os.path.join(
-        outputfolder, "non_fuel_energy_source.csv"
+        output_folder, "non_fuel_energy_source.csv"
     )
     build_non_fuel_energy_source().to_csv(non_fuel_energy_source_filepath, index=False)
 
-    periods_filepath = os.path.join(outputfolder, "periods.csv")
+    periods_filepath = os.path.join(output_folder, "periods.csv")
     build_periods(inv_period, period_start, period_end).to_csv(
         periods_filepath, index=False
     )
 
-    transmission_lines_filepath = os.path.join(outputfolder, "transmission_lines.csv")
+    transmission_lines_filepath = os.path.join(output_folder, "transmission_lines.csv")
     build_transmission_lines(grid).to_csv(transmission_lines_filepath, index=False)
 
-    trans_params_filepath = os.path.join(outputfolder, "trans_params.csv")
+    trans_params_filepath = os.path.join(output_folder, "trans_params.csv")
     build_trans_params().to_csv(trans_params_filepath, index=False)
 
 
