@@ -39,6 +39,19 @@ def make_plant_indices(plant_ids):
     return original_plant_indices, hypothetical_plant_indices
 
 
+def load_mapping(filename):
+    """Takes a file path to a timepoint mapping csv and converts
+        the given mapping into a format expected by the conversion function
+
+    :param str filename: path to the mapping csv
+    :return: (*pandas.DataFrame*) -- a dataframe with of timepoints to a list containing
+        all the component time stamps
+    """
+    mapping = pd.read_csv(filename, index_col=0)
+
+    return mapping
+
+
 def make_branch_indices(branch_ids, dc=False):
     """Make the indices of existing branch for input to Switch.
 
@@ -47,6 +60,55 @@ def make_branch_indices(branch_ids, dc=False):
     :return: (*list*) -- list of branch indices for input to Switch
     """
     return [f"{i}dc" if dc else f"{i}ac" for i in branch_ids]
+
+
+def parse_timepoints(var_dict, variables, mapping):
+    """Takes the solution variable dictionary contained in the output pickle
+    file of `switch` and un-maps the temporal reduction timepoints back into
+    a timestamp-indexed dataframe.
+
+    :param dict var_dict: a flat dictionary where the keys are a string
+        containing both variable names and variable parameters and the values
+        are a dictionary where Value is the datapoint for that combination of
+        variable name and parameters.
+    :param list variables: a list of timeseries variable strings to parse out
+    :param dict mapping: a dictionary of timepoints to a list containing
+        all the component time stamps
+    :return (*dict*): a dictionary where the keys are the variable name strings
+        and the values are pandas dataframes. The index of these dataframes
+        are the timestamps contained in the mapping dictionary values.
+        The columns of these dataframes are a comma-separated string of the
+        parameters embedded in the key of the original input dictionary with
+        the timepoint removed and preserved order otherwise. If no variables
+        are found in the input dictionary, the value will be None
+
+    """
+    # Initialize final dictionary to return
+    parsed_data = {}
+
+    for key in variables:
+        # Parse out a dataframe for each variable
+        df = match_variables(
+            var_dict,
+            key + r"\[(?P<params>.*),(?P<timepoint>.*?)\]",
+            ["params", "timepoint"],
+        )
+
+        # If no such variable was found, set dataframe to None
+        if df.empty:
+            parsed_data[key] = None
+            continue
+
+        # Unstack such that the timepoints are the indices
+        df = df.set_index(["timepoint", "params"]).unstack()
+        # Cast timepoints as ints to match mapping
+        df.index = df.index.astype(int)
+        # Expand rows to all timestamps
+        df = df.loc[mapping["timepoint"]].set_index(mapping.index)
+
+        parsed_data[key] = df
+
+    return parsed_data
 
 
 def recover_plant_indices(switch_plant_ids):
