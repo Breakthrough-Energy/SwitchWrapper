@@ -38,6 +38,24 @@ def make_plant_indices(plant_ids):
     hypothetical_plant_indices = [f"{o}i" for o in original_plant_indices]
     return original_plant_indices, hypothetical_plant_indices
 
+def load_mapping(filename):
+    with open(filename, 'r') as f:
+        mapping = {}
+        index = []
+        # read headers
+        
+        f.readline()
+        for line in f:
+            utc, timepoint = line.rstrip().split(',')
+
+            if timepoint in mapping:
+                mapping[timepoint].append(utc)
+            else:
+                mapping[timepoint] = [utc]
+
+            index.append(utc)  
+    
+    return mapping, index
 
 def make_branch_indices(branch_ids, dc=False):
     """Make the indices of existing branch for input to Switch.
