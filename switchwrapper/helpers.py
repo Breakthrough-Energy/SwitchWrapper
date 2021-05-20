@@ -59,12 +59,38 @@ def load_mapping(filename):
 
 def make_branch_indices(branch_ids, dc=False):
     """Make the indices of existing branch for input to Switch.
-
     :param iterable branch_ids: list of original branch ids.
     :param bool dc: branch_ids are for dclines or not, defaults to False.
     :return: (*list*) -- list of branch indices for input to Switch
     """
     return [f"{i}dc" if dc else f"{i}ac" for i in branch_ids]
+
+def parse_timepoints(var_dict, variables, mapping_info):
+    start = datetime.now()
+    
+    mapping, index = mapping_info
+
+    var_data = {key: pd.DataFrame(index = index) for key in variables}
+
+    for key in var_dict:
+        # assumes key pattern of variableName[parameters]
+        split_point = key.find('[')
+        var_name = key[:split_point]
+        var_params = key[split_point+1:-1].split(',')
+
+        if var_name in variables:
+            timepoint = var_params.pop(int(variables[var_name]))
+
+            data = var_data[var_name]
+            v = ','.join(var_params)
+            
+            if v not in data.columns:
+                data[v] = None
+            data.loc[mapping[timepoint], v] = var_dict[key]['Value']
+
+    print(datetime.now() - start)
+    return var_data
+
 
 
 def recover_plant_indices(switch_plant_ids):
