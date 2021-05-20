@@ -33,7 +33,7 @@ def profiles_to_switch(
 
     loads_filepath = os.path.join(output_folder, "loads.csv")
     loads = build_loads(grid.bus, profiles["demand"], timestamp_to_timepoints)
-    loads.to_csv(loads_filepath, index=False)
+    loads.to_csv(loads_filepath)
 
     timeseries_filepath = os.path.join(output_folder, "timeseries.csv")
     timeseries = build_timeseries(
@@ -59,7 +59,23 @@ def build_loads(bus, demand, timestamp_to_timepoints):
         (index).
     :return: (*pandas.DataFrame*) -- data frame of demand at each bus/timepoint.
     """
-    return pd.DataFrame()
+    # Distribute per-zone to demand to buses
+    bus_mod = bus.copy()
+    bus_mod["zone_Pd"] = bus_mod.groupby("zone_id")["Pd"].transform("sum")
+    bus_mod["zone_share"] = bus_mod["Pd"] / bus_mod["zone_Pd"]
+    zone_bus_shares = bus_mod.pivot(columns="zone_id", values="zone_share").fillna(0)
+    bus_demand = demand.dot(zone_bus_shares.T)
+
+    # Calculate mean bus demand for each timepoint
+    bus_demand["TIMEPOINT"] = timestamp_to_timepoints.to_numpy()
+    timepoint_demand = bus_demand.groupby("TIMEPOINT").mean()
+
+    # Convert from table of values to one row for each value
+    timepoint_demand = timepoint_demand.melt(
+        var_name="LOAD_ZONE", value_name="zone_demand_mw", ignore_index=False
+    )
+
+    return timepoint_demand
 
 
 def build_timeseries(timeseries_to_duration, timestamp_to_timepoints, timepoints):
