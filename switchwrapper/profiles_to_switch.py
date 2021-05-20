@@ -3,7 +3,7 @@ import os
 import pandas as pd
 
 
-def profiles_to_switch(grid, profiles, timepoints, timeseries, mapping, outputfolder):
+def profiles_to_switch(grid, profiles, timepoints, timeseries, mapping, output_folder):
     """Using the provided mapping of hourly timestamps to timepoints, plus hourly
     profiles, create and save CSVs which produce temporal data needed for Switch.
     Inputs are indexed by 'timestamps', while outputs are 'timeseries', each of which
@@ -17,21 +17,21 @@ def profiles_to_switch(grid, profiles, timepoints, timeseries, mapping, outputfo
         columns 'timestamp' and 'timeseries'.
     :param pandas.Series timeseries: durations (values) of each timeseries (index).
     :param pandas.Series mapping: timepoints (values) of each timestamp (index).
-    :param str outputfolder: the location to save outputs, will be created if necessary.
+    :param str output_folder: the location to save outputs, created as necessary.
     """
-    # Create the outputfolder, if it doesn't already exist
-    os.makedirs(outputfolder, exist_ok=True)
+    # Create the output folder, if it doesn't already exist
+    os.makedirs(output_folder, exist_ok=True)
 
-    loads_filepath = os.path.join(outputfolder, "loads.csv")
+    loads_filepath = os.path.join(output_folder, "loads.csv")
     loads = build_loads(grid.bus, profiles["demand"], mapping)
     loads.to_csv(loads_filepath, index=False)
 
-    timeseries_filepath = os.path.join(outputfolder, "timeseries.csv")
+    timeseries_filepath = os.path.join(output_folder, "timeseries.csv")
     timeseries = build_timeseries(timeseries, mapping, timepoints)
     timeseries.to_csv(timeseries_filepath, index=False)
 
     variable_capacity_factors_filepath = os.path.join(
-        outputfolder, "variable_capacity_factors.csv"
+        output_folder, "variable_capacity_factors.csv"
     )
     variable_capacity_factors = build_variable_capacity_factors(
         profiles, grid.plant, mapping
