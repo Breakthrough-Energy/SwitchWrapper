@@ -12,7 +12,7 @@ def profiles_to_switch(grid, profiles, timepoints, timeseries, mapping, output_f
     :param powersimdata.input.grid.Grid grid: grid instance.
     :param dict profiles: keys are {"demand", "hydro", "solar", "wind"}, values are the
         corresponding pandas data frames, indexed by hourly timestamp, with columns
-        representing plant IDs (for hydro, solar, and wind) or zone_ids (for demand).
+        representing plant IDs (for hydro, solar, and wind) or zone IDs (for demand).
     :param pandas.DataFrame timepoints: data frame, indexed by timepoint_id, with
         columns 'timestamp' and 'timeseries'.
     :param pandas.Series timeseries: durations (values) of each timeseries (index).
@@ -43,7 +43,7 @@ def build_loads(bus, demand, mapping):
     """Map timestamps to timepoints for demand data frame.
 
     :param pandas.DataFrame bus: bus data from a Grid object.
-    :param pandas.DataFrame demand: demand by timestamp (index) and zone (columns).
+    :param pandas.DataFrame demand: demand by timestamp (index) and zone IDs (columns).
     :param pandas.Series mapping: timepoints (values) of each timestamp (index).
     :return: (*pandas.DataFrame*) -- data frame of demand at each bus/timepoint.
     """
