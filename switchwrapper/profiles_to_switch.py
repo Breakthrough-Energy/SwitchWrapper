@@ -23,7 +23,7 @@ def profiles_to_switch(
     :param pandas.DataFrame timepoints: data frame, indexed by timepoint_id, with
         columns 'timestamp' and 'timeseries'.
     :param pandas.DataFrame timeseries: data frame, indexed by timeseries, with columns
-        'ts_period' and 'ts_duration'.
+        'ts_period' and 'ts_duration_of_tp'.
     :param pandas.Series timestamp_to_timepoints: timepoints (values) of each timestamp
         (index).
     :param str output_folder: the location to save outputs, created as necessary.
@@ -81,14 +81,22 @@ def build_timeseries(timeseries, timestamp_to_timepoints, timepoints):
     ``timestamp_to_timepoints`` and ``timepoints``.
 
     :param pandas.DataFrame timeseries: data frame, indexed by timeseries, with columns
-        'ts_period' and 'ts_duration'.
+        'ts_period' and 'ts_duration_of_tp'.
     :param pandas.Series timestamp_to_timepoints: timepoints (values) of each timestamp
         (index).
     :param pandas.DataFrame timepoints: data frame, indexed by timepoint_id, with
         columns 'timestamp' and 'timeseries'.
     :return: (*pandas.DataFrame*) -- data frame containing all timeseries information.
     """
-    return pd.DataFrame()
+    timeseries["ts_num_tps"] = timepoints.value_counts("timeseries")
+    # Count the number of hours mapped to each timeseries (via the timepoints)
+    hours = timestamp_to_timepoints.value_counts().groupby(timepoints.timeseries).sum()
+    timeseries["ts_scale_to_period"] = hours / (
+        timeseries["ts_duration_of_tp"] * timeseries["ts_num_tps"]
+    )
+    timeseries.index.name == "TIMESERIES"
+    timeseries.reset_index(inplace=True)
+    return timeseries
 
 
 def build_variable_capacity_factors(profiles, plant, timestamp_to_timepoints):
