@@ -48,8 +48,9 @@ def profiles_to_switch(
     variable_capacity_factors_filepath = os.path.join(
         output_folder, "variable_capacity_factors.csv"
     )
+    variable_profiles = {p: profiles[p] for p in {"hydro", "solar", "wind"}}
     variable_capacity_factors = build_variable_capacity_factors(
-        profiles, grid.plant, timestamp_to_timepoints
+        variable_profiles, grid.plant, timestamp_to_timepoints
     )
     variable_capacity_factors.to_csv(variable_capacity_factors_filepath, index=False)
 
@@ -125,10 +126,10 @@ def build_timeseries(timepoints, timestamp_to_timepoints):
     return timeseries
 
 
-def build_variable_capacity_factors(profiles, plant, timestamp_to_timepoints):
+def build_variable_capacity_factors(gen_profiles, plant, timestamp_to_timepoints):
     """Map timestamps to timepoints for variable generation data frames.
 
-    :param dict profiles: keys include {"hydro", "solar", "wind"}, values are the
+    :param dict gen_profiles: keys include {"hydro", "solar", "wind"}, values are the
         corresponding pandas data frames, indexed by hourly timestamp, with columns
         representing plant IDs.
     :param pandas.DataFrame plant: plant data from a Grid object.
@@ -136,4 +137,36 @@ def build_variable_capacity_factors(profiles, plant, timestamp_to_timepoints):
         (index).
     :return: (*pandas.DataFrame*) -- data frame generation at each plant/timepoint.
     """
-    return pd.DataFrame()
+    # Constants
+    column_names = ["GENERATION_PROJECT", "timepoint", "gen_max_capacity_factor"]
+
+    # Get normalized profiles for all variable plants
+    all_profiles = pd.concat(gen_profiles.values(), axis=1)
+    capacities = plant.loc[all_profiles.columns.tolist(), "Pmax"]
+    normalized_profiles = (all_profiles / capacities).fillna(0)
+
+    # Aggregate timestamps to timepoints
+    normalized_profiles["timepoint"] = timestamp_to_timepoints.to_numpy()
+    variable_capacity_factors = normalized_profiles.groupby("timepoint").mean()
+
+    # Convert from table of values to one row for each value
+    variable_capacity_factors = variable_capacity_factors.melt(
+        var_name="GENERATION_PROJECT",
+        value_name="gen_max_capacity_factor",
+        ignore_index=False,
+    )
+
+    # Re-order index & columns
+    variable_capacity_factors.reset_index(inplace=True)
+    variable_capacity_factors = variable_capacity_factors[column_names]
+
+    # Copy profiles to apply to current and hypothetical plants
+    original_plant_indices = [
+        f"g{p}" for p in variable_capacity_factors["GENERATION_PROJECT"]
+    ]
+    hypothetical_plant_indices = [f"{o}i" for o in original_plant_indices]
+    all_plant_indices = original_plant_indices + hypothetical_plant_indices
+    variable_capacity_factors = pd.concat([variable_capacity_factors] * 2)
+    variable_capacity_factors["GENERATION_PROJECT"] = all_plant_indices
+
+    return variable_capacity_factors
