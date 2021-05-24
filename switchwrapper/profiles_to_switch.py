@@ -7,7 +7,6 @@ def profiles_to_switch(
     grid,
     profiles,
     timepoints,
-    timeseries,
     timestamp_to_timepoints,
     output_folder,
 ):
@@ -21,13 +20,17 @@ def profiles_to_switch(
         corresponding pandas data frames, indexed by hourly timestamp, with columns
         representing plant IDs (for hydro, solar, and wind) or zone IDs (for demand).
     :param pandas.DataFrame timepoints: data frame, indexed by timepoint_id, with
-        columns 'timestamp' and 'timeseries'.
-    :param pandas.DataFrame timeseries: data frame, indexed by timeseries, with columns
-        'ts_period' and 'ts_duration_of_tp'.
+        columns: 'timestamp', 'timeseries', 'ts_period', and 'ts_duration_of_tp'.
+        Each unique value in the 'timeseries' column must map to exactly one entry in
+        each of 'ts_period' and 'ts_duration_of_tp', as if these columns came from
+        another table in a relational database.
     :param pandas.Series timestamp_to_timepoints: timepoints (values) of each timestamp
         (index).
     :param str output_folder: the location to save outputs, created as necessary.
     """
+    # Validate the input data
+    _check_timepoints(timepoints)
+
     # Create the output folder, if it doesn't already exist
     os.makedirs(output_folder, exist_ok=True)
 
@@ -36,8 +39,8 @@ def profiles_to_switch(
     loads.to_csv(loads_filepath)
 
     timeseries_filepath = os.path.join(output_folder, "timeseries.csv")
-    timeseries_df = build_timeseries(timeseries, timestamp_to_timepoints, timepoints)
-    timeseries_df.to_csv(timeseries_filepath, index=False)
+    timeseries = build_timeseries(timepoints, timestamp_to_timepoints)
+    timeseries.to_csv(timeseries_filepath, index=False)
 
     variable_capacity_factors_filepath = os.path.join(
         output_folder, "variable_capacity_factors.csv"
@@ -46,6 +49,27 @@ def profiles_to_switch(
         profiles, grid.plant, timestamp_to_timepoints
     )
     variable_capacity_factors.to_csv(variable_capacity_factors_filepath, index=False)
+
+
+def _check_timepoints(timepoints):
+    """Validate that a one-to-many relationship exists between the entries of the
+    'timeseries' column and the entries of the 'ts_period' and 'ts_duration_of_tp'
+    columns.
+
+    :param pandas.DataFrame timepoints: data frame, indexed by timepoint_id, with
+        columns: 'timestamp', 'timeseries', 'ts_period', and 'ts_duration_of_tp'.
+    :raises ValueError: if each unique value in the 'timeseries' column does not map to
+        exactly one entry in each of 'ts_period' and 'ts_duration_of_tp', as if these
+        columns came from another table in a relational database.
+    """
+    timeseries_group_columns = ["timeseries", "ts_period", "ts_duration_of_tp"]
+    num_timeseries = len(timepoints["timeseries"].unique())
+    num_timeseries_groups = len(timepoints.groupby(timeseries_group_columns))
+    if num_timeseries != num_timeseries_groups:
+        raise ValueError(
+            "Each timeseries entry must have exactly one corresponding entry within the"
+            " ts_period and ts_duration_of_tp columns."
+        )
 
 
 def build_loads(bus, demand, timestamp_to_timepoints):
@@ -76,18 +100,17 @@ def build_loads(bus, demand, timestamp_to_timepoints):
     return timepoint_demand
 
 
-def build_timeseries(timeseries, timestamp_to_timepoints, timepoints):
+def build_timeseries(timepoints, timestamp_to_timepoints):
     """Add extra information to ``timeseries``, based on the information in
     ``timestamp_to_timepoints`` and ``timepoints``.
 
-    :param pandas.DataFrame timeseries: data frame, indexed by timeseries, with columns
-        'ts_period' and 'ts_duration_of_tp'.
+    :param pandas.DataFrame timepoints: data frame, indexed by timepoint_id, with
+        columns: 'timestamp', 'timeseries', 'ts_period', and 'ts_duration_of_tp'.
     :param pandas.Series timestamp_to_timepoints: timepoints (values) of each timestamp
         (index).
-    :param pandas.DataFrame timepoints: data frame, indexed by timepoint_id, with
-        columns 'timestamp' and 'timeseries'.
     :return: (*pandas.DataFrame*) -- data frame containing all timeseries information.
     """
+    timeseries = timepoints.groupby("timeseries").first().drop(columns="timestamp")
     timeseries["ts_num_tps"] = timepoints.value_counts("timeseries")
     # Count the number of hours mapped to each timeseries (via the timepoints)
     hours = timestamp_to_timepoints.value_counts().groupby(timepoints.timeseries).sum()
