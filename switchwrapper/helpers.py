@@ -39,6 +39,15 @@ def make_plant_indices(plant_ids):
     return original_plant_indices, hypothetical_plant_indices
 
 def load_mapping(filename):
+    """ Takes a file path to a timepoint mapping csv and converts
+    the given mapping into a format expected by the conversion format.
+
+    :param str filename:
+    :return: (*tuple*) -- the first value is a dictionary of timepoints to
+    a list containing all the component time stamps, and the second value is
+    a list with the timestamps in the desired order to be used as the index of
+    the resulting dataframes.
+    """
     with open(filename, 'r') as f:
         mapping = {}
         index = []
@@ -66,6 +75,24 @@ def make_branch_indices(branch_ids, dc=False):
     return [f"{i}dc" if dc else f"{i}ac" for i in branch_ids]
 
 def parse_timepoints(var_dict, variables, mapping_info):
+    """ Takes the solution variable dictionary contained in the output pickle
+    file of `switch` and un-maps the temporal reduction timepoints back into
+    a timestamp-indexed dataframe.
+
+    :param dict var_dict: the dictionary contained in solution._list[0].Variable
+    of the output pickle file of `switch`
+    :param dict variables: a dictionary describing the format of the variables
+    to parse from the solution variable dictionary. The keys of this dictionary
+    are the names of the variables, and the values are the (0-indexed) position
+    of the timestamp in the brackets following the variable name
+    :param tuple mapping_info: the first value is a dictionary of timepoints to
+    a list containing all the component time stamps, and the second value is
+    a list with the timestamps in the desired order to be used as the index of
+    the resulting dataframes.
+    :return dict var_data: a dictionary where the keys are the variable names
+    given (keys of the variables dictionary) and the values are pandas
+    dataframes with a timestamp index.
+    """
     start = datetime.now()
     
     mapping, index = mapping_info
