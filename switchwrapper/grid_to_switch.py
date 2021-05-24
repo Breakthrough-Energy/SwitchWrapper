@@ -56,7 +56,7 @@ def grid_to_switch(grid, output_folder):
     build_load_zones(grid.bus).to_csv(load_zones_filepath, index=False)
 
     non_fuel_energy_source_filepath = os.path.join(
-        output_folder, "non_fuel_energy_source.csv"
+        output_folder, "non_fuel_energy_sources.csv"
     )
     build_non_fuel_energy_source().to_csv(non_fuel_energy_source_filepath, index=False)
 
@@ -201,7 +201,7 @@ def build_financials(base_year):
     :return: (*pandas.DataFrame*) -- single-row data frame with all params.
     """
     financials = pd.DataFrame([const.financial_parameters])
-    financials["base_year"] = base_year
+    financials.insert(0, "base_financial_year", base_year)
     return financials
 
 
@@ -227,7 +227,7 @@ def build_fuel_cost(average_fuel_cost, base_year, inv_period):
     fuel_cost = average_fuel_cost.copy()
     # Retrieve the original `bus_id` and `fuel` columns, rename `bus_id` to `load_zone`
     fuel_cost.reset_index(inplace=True)
-    fuel_cost.rename(columns={"bus_id": "load_zone"})
+    fuel_cost.rename(columns={"bus_id": "load_zone"}, inplace=True)
     # Duplicate each row N times, where N is the number of investment years
     original_fuel_cost_length = len(fuel_cost)
     fuel_cost = fuel_cost.loc[fuel_cost.index.repeat(len(inv_period))]
@@ -279,7 +279,7 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
     df = pd.DataFrame()
     df["GENERATION_PROJECT"] = all_plant_indices
     df["gen_tech"] = plant.type.tolist() * 2
-    df["gen_tech_zone"] = plant.bus_id.tolist() * 2
+    df["gen_load_zone"] = plant.bus_id.tolist() * 2
     df["gen_connect_cost_per_mw"] = 0
     df["gen_capacity_limit_mw"] = [
         const.assumed_capacity_limits.get(t, const.assumed_capacity_limits["default"])
@@ -376,6 +376,7 @@ def build_load_zones(bus):
     load_zones["dbid"] = range(1, len(load_zones) + 1)
     for k, v in const.load_parameters.items():
         load_zones[k] = v
+    load_zones.rename(columns={"bus_id": "LOAD_ZONE"}, inplace=True)
     return load_zones
 
 
