@@ -38,6 +38,9 @@ def profiles_to_switch(
     loads = build_loads(grid.bus, profiles["demand"], timestamp_to_timepoints)
     loads.to_csv(loads_filepath)
 
+    timepoints_filepath = os.path.join(output_folder, "timepoints.csv")
+    timepoints[["timestamp", "timeseries"]].to_csv(timepoints_filepath)
+
     timeseries_filepath = os.path.join(output_folder, "timeseries.csv")
     timeseries = build_timeseries(timepoints, timestamp_to_timepoints)
     timeseries.to_csv(timeseries_filepath, index=False)
