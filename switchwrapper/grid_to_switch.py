@@ -276,14 +276,14 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
     estimated_heatrate = (fuel_gencost / fuel_cost_per_generator).fillna(0)
 
     # Finally, construct data frame and return
-    df = pd.DataFrame()
-    df["GENERATION_PROJECT"] = all_plant_indices
+    df = pd.DataFrame(index=pd.Index(all_plant_indices, name="GENERATION_PROJECT"))
     df["gen_tech"] = plant.type.tolist() * 2
     df["gen_load_zone"] = plant.bus_id.tolist() * 2
     df["gen_connect_cost_per_mw"] = 0
-    df["gen_capacity_limit_mw"] = [
+    df["gen_capacity_limit_mw"] = "."
+    df.loc[hypothetical_plant_indices, "gen_capacity_limit_mw"] = [
         const.assumed_capacity_limits.get(t, const.assumed_capacity_limits["default"])
-        for t in plant.type.tolist() * 2
+        for t in plant.type.tolist()
     ]
     df["gen_full_load_heat_rate"] = estimated_heatrate.tolist() * 2
     df["gen_variable_om"] = nonfuel_gencost.tolist() * 2
@@ -304,6 +304,7 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
     df["gen_ccs_energy_load"] = "."
     df["gen_storage_efficiency"] = "."
     df["gen_store_to_release_ratio"] = "."
+    df.reset_index(inplace=True)
 
     return df
 
