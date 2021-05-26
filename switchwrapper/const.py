@@ -1,3 +1,19 @@
+switch_modules = [
+    "switch_model",
+    "switch_model.timescales",
+    "switch_model.financials",
+    "switch_model.balancing.load_zones",
+    "switch_model.energy_sources.properties",
+    "switch_model.generators.core.build",
+    "switch_model.generators.core.dispatch",
+    "switch_model.generators.core.no_commit",
+    "switch_model.energy_sources.fuel_costs.simple",
+    "switch_model.transmission.local_td",
+    "switch_model.transmission.transport.build",
+    "switch_model.transmission.transport.dispatch",
+    "switch_model.reporting",
+]
+
 financial_parameters = {
     "discount_rate": 0.079,
     "interest_rate": 0.029,
