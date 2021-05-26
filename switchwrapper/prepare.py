@@ -1,8 +1,7 @@
-import inspect
 import os
-import re
 
-import switchwrapper
+import switch_model
+
 from switchwrapper import const
 from switchwrapper.grid_to_switch import grid_to_switch
 from switchwrapper.profiles_to_switch import _check_timepoints, profiles_to_switch
@@ -59,12 +58,6 @@ def write_version_file(folder):
 
     :param str folder: the location to save the file.
     """
-    switchwrapper_directory = os.path.join(
-        os.path.dirname(inspect.getfile(switchwrapper)), ".."
-    )
-    requirements_filepath = os.path.join(switchwrapper_directory, "requirements.txt")
-    with open(requirements_filepath, "r") as f:
-        requirements = f.read()
-    switch_version = re.search(r"switch-model==(\d.\d.\d)", requirements).group(1)
+    switch_version = switch_model.__version__
     with open(os.path.join(folder, "switch_inputs_version.txt"), "w") as f:
         f.write(switch_version)
