@@ -286,6 +286,7 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
         for t in plant.type.tolist() * 2
     ]
     df["gen_full_load_heat_rate"] = estimated_heatrate.tolist() * 2
+    df.loc[df.gen_tech.isin(const.variable_types), "gen_full_load_heat_rate"] = "."
     df["gen_variable_om"] = nonfuel_gencost.tolist() * 2
     df["gen_max_age"] = [
         const.assumed_ages_by_type.get(t, const.assumed_ages_by_type["default"])
