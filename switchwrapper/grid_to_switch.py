@@ -443,6 +443,7 @@ def build_aclines(grid):
             grid.bus.loc[acline["to_bus_id"], "baseKV"],
         )
     )
+    acline["branch_id"] = acline["branch_id"].apply(lambda x: str(x) + "ac")
     return acline.round(2)
 
 
@@ -462,7 +463,7 @@ def build_dclines(grid):
         )
     )
     dcline["trans_efficiency"] = 0.99
-    dcline["dcline_id"] = dcline["dcline_id"].apply(lambda x: str(x) + "dl")
+    dcline["dcline_id"] = dcline["dcline_id"].apply(lambda x: str(x) + "dc")
     dcline.rename(columns={"dcline_id": "branch_id", "Pmax": "rateA"}, inplace=True)
     return dcline.round(2)
 
