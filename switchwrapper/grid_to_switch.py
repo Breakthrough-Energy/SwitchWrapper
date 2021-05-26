@@ -244,7 +244,7 @@ def build_fuel_cost(average_fuel_cost, base_year, inv_period):
     # Clean up columns we don't need
     fuel_cost.drop(columns=["GenFuelCost", "inflation"], inplace=True)
     # Clean up any rows we don't need
-    fuel_cost = fuel_cost.query("fuel_cost > 0")
+    fuel_cost = fuel_cost.query("fuel_cost > 0 and fuel in @const.fuels")
 
     return fuel_cost
 
