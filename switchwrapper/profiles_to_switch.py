@@ -117,7 +117,7 @@ def build_timeseries(timepoints, timestamp_to_timepoints):
     timeseries["ts_scale_to_period"] = hours / (
         timeseries["ts_duration_of_tp"] * timeseries["ts_num_tps"]
     )
-    timeseries.index.name == "TIMESERIES"
+    timeseries.index.name = "TIMESERIES"
     timeseries.reset_index(inplace=True)
     return timeseries
 
