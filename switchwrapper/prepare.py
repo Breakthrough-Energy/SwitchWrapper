@@ -1,5 +1,8 @@
+import inspect
 import os
+import re
 
+import switchwrapper
 from switchwrapper import const
 from switchwrapper.grid_to_switch import grid_to_switch
 from switchwrapper.profiles_to_switch import _check_timepoints, profiles_to_switch
@@ -37,6 +40,7 @@ def prepare_inputs(
     profiles_to_switch(
         grid, profiles, timepoints, timestamp_to_timepoints, output_folder
     )
+    write_version_file(output_folder)
     write_modules(os.path.join(output_folder, ".."))
 
 
@@ -48,3 +52,19 @@ def write_modules(folder):
     with open(os.path.join(folder, "modules.txt"), "w") as f:
         for module in const.switch_modules:
             f.write(f"{module}\n")
+
+
+def write_version_file(folder):
+    """Create a switch_inputs_version.txt file in the inputs folder.
+
+    :param str folder: the location to save the file.
+    """
+    switchwrapper_directory = os.path.join(
+        os.path.dirname(inspect.getfile(switchwrapper)), ".."
+    )
+    requirements_filepath = os.path.join(switchwrapper_directory, "requirements.txt")
+    with open(requirements_filepath, "r") as f:
+        requirements = f.read()
+    switch_version = re.search(r"switch-model==(\d.\d.\d)", requirements).group(1)
+    with open(os.path.join(folder, "switch_inputs_version.txt"), "w") as f:
+        f.write(switch_version)
