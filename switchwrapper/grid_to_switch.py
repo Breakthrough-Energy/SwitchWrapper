@@ -298,6 +298,7 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
     df["gen_is_baseload"] = list(plant.type.isin(const.baseload_types).astype(int)) * 2
     df["gen_is_cogen"] = 0
     df["gen_energy_source"] = plant.type.map(const.fuel_mapping).tolist() * 2
+    df.loc[df.gen_energy_source.isin(const.non_fuels), "gen_full_load_heat_rate"] = "."
     df["gen_unit_size"] = "."
     df["gen_ccs_capture_efficiency"] = "."
     df["gen_ccs_energy_load"] = "."
