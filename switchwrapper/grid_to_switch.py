@@ -260,9 +260,6 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
         This is single-column ("GenFuelCost") and multi-index ("bus_id", "fuel").
     :return: (*pandas.DataFrame*) -- data frame of generation project info.
     """
-    # Constants
-    no_heat_rate_types = const.variable_types | {"geothermal"}
-
     # Extract information from inputs
     original_plant_indices, hypothetical_plant_indices = make_indices(plant.index)
     all_plant_indices = original_plant_indices + hypothetical_plant_indices
@@ -289,7 +286,6 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
         for t in plant.type.tolist() * 2
     ]
     df["gen_full_load_heat_rate"] = estimated_heatrate.tolist() * 2
-    df.loc[df.gen_tech.isin(no_heat_rate_types), "gen_full_load_heat_rate"] = "."
     df["gen_variable_om"] = nonfuel_gencost.tolist() * 2
     df["gen_max_age"] = [
         const.assumed_ages_by_type.get(t, const.assumed_ages_by_type["default"])
@@ -302,6 +298,7 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
     df["gen_is_baseload"] = list(plant.type.isin(const.baseload_types).astype(int)) * 2
     df["gen_is_cogen"] = 0
     df["gen_energy_source"] = plant.type.map(const.fuel_mapping).tolist() * 2
+    df.loc[df.gen_energy_source.isin(const.non_fuels), "gen_full_load_heat_rate"] = "."
     df["gen_unit_size"] = "."
     df["gen_ccs_capture_efficiency"] = "."
     df["gen_ccs_energy_load"] = "."
