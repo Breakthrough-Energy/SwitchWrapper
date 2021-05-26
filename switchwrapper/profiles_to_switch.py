@@ -97,6 +97,10 @@ def build_loads(bus, demand, timestamp_to_timepoints):
         var_name="LOAD_ZONE", value_name="zone_demand_mw", ignore_index=False
     )
 
+    # Set the index properly for Switch's expectations for the CSV
+    timepoint_demand.reset_index(inplace=True)
+    timepoint_demand.set_index("LOAD_ZONE", inplace=True)
+
     return timepoint_demand
 
 
