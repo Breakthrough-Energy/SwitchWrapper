@@ -30,9 +30,6 @@ def profiles_to_switch(
         (index).
     :param str output_folder: the location to save outputs, created as necessary.
     """
-    # Validate the input data
-    _check_timepoints(timepoints)
-
     # Create the output folder, if it doesn't already exist
     os.makedirs(output_folder, exist_ok=True)
 

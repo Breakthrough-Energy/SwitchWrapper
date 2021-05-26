@@ -1,5 +1,5 @@
 from switchwrapper.grid_to_switch import grid_to_switch
-from switchwrapper.profiles_to_switch import profiles_to_switch
+from switchwrapper.profiles_to_switch import _check_timepoints, profiles_to_switch
 
 
 def prepare_inputs(
@@ -24,6 +24,9 @@ def prepare_inputs(
         (index).
     :param str output_folder: the location to save outputs, created as necessary.
     """
+    # Validate the input data
+    _check_timepoints(timepoints)
+
     grid_to_switch(grid, output_folder)
     profiles_to_switch(
         grid, profiles, timepoints, timestamp_to_timepoints, output_folder
