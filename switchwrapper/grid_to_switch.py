@@ -358,6 +358,8 @@ def build_gen_build_predetermined(plant):
         },
         inplace=True,
     )
+    original_plant_indices, _ = make_indices(plant.index)
+    gen_build_predetermined["GENERATION_PROJECT"] = original_plant_indices
     gen_build_predetermined = gen_build_predetermined[
         ["GENERATION_PROJECT", "build_year", "gen_predetermined_cap"]
     ]
