@@ -30,9 +30,6 @@ def profiles_to_switch(
         (index).
     :param str output_folder: the location to save outputs, created as necessary.
     """
-    # Create the output folder, if it doesn't already exist
-    os.makedirs(output_folder, exist_ok=True)
-
     loads_filepath = os.path.join(output_folder, "loads.csv")
     loads = build_loads(grid.bus, profiles["demand"], timestamp_to_timepoints)
     loads.to_csv(loads_filepath)

@@ -1,3 +1,5 @@
+import os
+
 from switchwrapper.grid_to_switch import grid_to_switch
 from switchwrapper.profiles_to_switch import _check_timepoints, profiles_to_switch
 
@@ -26,6 +28,9 @@ def prepare_inputs(
     """
     # Validate the input data
     _check_timepoints(timepoints)
+
+    # Create the output folder, if it doesn't already exist
+    os.makedirs(output_folder, exist_ok=True)
 
     grid_to_switch(grid, output_folder)
     profiles_to_switch(

@@ -14,9 +14,6 @@ def grid_to_switch(grid, output_folder):
     :param powersimdata.input.grid.Grid grid: grid instance.
     :param str output_folder: the location to save outputs, created as necessary.
     """
-    # Create the output folder, if it doesn't already exist
-    os.makedirs(output_folder, exist_ok=True)
-
     # First, prompt the user for information not contained in const or the passed grid
     base_year = get_base_year()
     inv_period, period_start, period_end = get_inv_periods()
