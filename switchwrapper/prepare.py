@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import switch_model
 
@@ -43,6 +44,10 @@ def prepare_inputs(
     )
     write_version_file(inputs_folder)
     write_modules(switch_files_root)
+
+    # Save a copy of the grid object for use in output processing
+    with open(os.path.join(inputs_folder, "grid.pkl"), "wb") as f:
+        pickle.dump(grid, f)
 
 
 def write_modules(folder):
