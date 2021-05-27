@@ -12,7 +12,7 @@ def prepare_inputs(
     profiles,
     timepoints,
     timestamp_to_timepoints,
-    output_folder="inputs",
+    switch_files_root=None,
 ):
     """Prepare all grid and profile data into a format expected by Switch.
 
@@ -27,20 +27,22 @@ def prepare_inputs(
         another table in a relational database.
     :param pandas.Series timestamp_to_timepoints: timepoints (values) of each timestamp
         (index).
-    :param str output_folder: the location to save outputs, created as necessary.
+    :param str switch_files_root: the location to save all Switch files.
     """
     # Validate the input data
     _check_timepoints(timepoints)
 
-    # Create the output folder, if it doesn't already exist
-    os.makedirs(output_folder, exist_ok=True)
+    # Create the 'inputs' folder, if it doesn't already exist
+    switch_files_root = os.getgwd() if switch_files_root is None else switch_files_root
+    inputs_folder = os.path.join(switch_files_root, "inputs")
+    os.makedirs(inputs_folder, exist_ok=True)
 
-    grid_to_switch(grid, output_folder)
+    grid_to_switch(grid, inputs_folder)
     profiles_to_switch(
-        grid, profiles, timepoints, timestamp_to_timepoints, output_folder
+        grid, profiles, timepoints, timestamp_to_timepoints, inputs_folder
     )
-    write_version_file(output_folder)
-    write_modules(os.path.join(output_folder, ".."))
+    write_version_file(inputs_folder)
+    write_modules(switch_files_root)
 
 
 def write_modules(folder):
