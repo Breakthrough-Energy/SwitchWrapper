@@ -100,3 +100,7 @@ assumed_ages_by_type = {
 
 baseload_types = {"coal", "nuclear"}
 variable_types = {"hydro", "solar", "wind", "wind_offshore"}
+
+# The timeseries variables available in the output pickle file
+# mapped to the 0-indexed location of the timepoint
+output_timeseries_format = {"DispatchGen": 1, "DispatchTx": 2, "UnservedLoad": 1}

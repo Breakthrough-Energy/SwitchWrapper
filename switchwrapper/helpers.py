@@ -2,6 +2,7 @@ import re
 
 import pandas as pd
 
+from switchwrapper import const
 
 def match_variables(variables, pattern, columns):
     """Search through dictionary of variables, extracting data frame of values.
@@ -38,33 +39,30 @@ def make_plant_indices(plant_ids):
     hypothetical_plant_indices = [f"{o}i" for o in original_plant_indices]
     return original_plant_indices, hypothetical_plant_indices
 
-def load_mapping(filename):
-    """ Takes a file path to a timepoint mapping csv and converts
-    the given mapping into a format expected by the conversion format.
 
-    :param str filename:
-    :return: (*tuple*) -- the first value is a dictionary of timepoints to
-    a list containing all the component time stamps, and the second value is
-    a list with the timestamps in the desired order to be used as the index of
-    the resulting dataframes.
+def load_mapping(filename):
+    """Takes a file path to a timepoint mapping csv and converts
+        the given mapping into a format expected by the conversion function
+
+    :param str filename: path to the mapping csv
+    :return: (*dict*) -- a dictionary of timepoints to a list containing
+        all the component time stamps
     """
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         mapping = {}
-        index = []
-        # read headers
-        
+
+        # Read headers
         f.readline()
+
         for line in f:
-            utc, timepoint = line.rstrip().split(',')
+            utc, timepoint = line.rstrip().split(",")
 
             if timepoint in mapping:
                 mapping[timepoint].append(utc)
             else:
                 mapping[timepoint] = [utc]
 
-            index.append(utc)  
-    
-    return mapping, index
+    return mapping
 
 def make_branch_indices(branch_ids, dc=False):
     """Make the indices of existing branch for input to Switch.
@@ -96,7 +94,8 @@ def parse_timepoints(var_dict, variables, mapping_info):
         # Split pickle dictionary key into variable name and parameters
         split_point = key.find("[")
         var_name = key[:split_point]
-        var_params = key[split_point + 1 : -1].split(",")
+        after_split = split_point + 1
+        var_params = key[after_split:-1].split(",")
 
         # Remove timepoint, and add the rest to the column name dictionary
         if var_name in variables:
@@ -131,7 +130,6 @@ def parse_timepoints(var_dict, variables, mapping_info):
         parsed_data[key] = data_dict
 
     return parsed_data
-
 
 
 def recover_plant_indices(switch_plant_ids):
