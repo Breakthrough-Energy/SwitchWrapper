@@ -80,43 +80,57 @@ def parse_timepoints(var_dict, variables, mapping_info):
     a timestamp-indexed dataframe.
 
     :param dict var_dict: the dictionary contained in solution._list[0].Variable
-    of the output pickle file of `switch`
-    :param dict variables: a dictionary describing the format of the variables
-    to parse from the solution variable dictionary. The keys of this dictionary
-    are the names of the variables, and the values are the (0-indexed) position
-    of the timestamp in the brackets following the variable name
-    :param tuple mapping_info: the first value is a dictionary of timepoints to
-    a list containing all the component time stamps, and the second value is
-    a list with the timestamps in the desired order to be used as the index of
-    the resulting dataframes.
-    :return dict var_data: a dictionary where the keys are the variable names
-    given (keys of the variables dictionary) and the values are pandas
-    dataframes with a timestamp index.
+        of the output pickle file of ``switch``
+    :param list variables: a list of timeseries variables to parse out
+    :param dict mapping: a dictionary of timepoints to a list containing
+        all the component time stamps
+    :return (*dict*): a dictionary where the keys are the variable names
+       given the values are pandas with a timestamp index.
     """
-    start = datetime.now()
-    
-    mapping, index = mapping_info
 
-    var_data = {key: pd.DataFrame(index = index) for key in variables}
+    # Initialize dictionary of variables: set(column names)
+    var_columns = {key: set([]) for key in variables}
 
+    # Parse out column names, removing the timepoint
     for key in var_dict:
-        # assumes key pattern of variableName[parameters]
-        split_point = key.find('[')
+        # Split pickle dictionary key into variable name and parameters
+        split_point = key.find("[")
         var_name = key[:split_point]
-        var_params = key[split_point+1:-1].split(',')
+        var_params = key[split_point + 1 : -1].split(",")
 
+        # Remove timepoint, and add the rest to the column name dictionary
         if var_name in variables:
-            timepoint = var_params.pop(int(variables[var_name]))
+            timepoint = var_params.pop(const.output_timeseries_format[var_name])
+            var_columns[var_name].add(",".join(var_params))
 
-            data = var_data[var_name]
-            v = ','.join(var_params)
-            
-            if v not in data.columns:
-                data[v] = None
-            data.loc[mapping[timepoint], v] = var_dict[key]['Value']
+    # Initialize final dictionary to return
+    parsed_data = {}
+    for key in var_columns:
+        # Initialize dictionary to turn into pandas dataframe
+        data_dict = {a: {} for a in var_columns[key]}
+        # Remap data for only this variable
+        for val in var_columns[key]:
+            for timepoint in mapping:
+                orig_key = key + "[" + val + "," + timepoint + "]"
+                data_dict[val][timepoint] = var_dict[orig_key]["Value"]
 
-    print(datetime.now() - start)
-    return var_data
+        # Cast as pandas dataframe
+        data_dict = pd.DataFrame.from_dict(data_dict)
+        # Create column to explode on
+        data_dict["timestamp"] = data_dict.index
+        # Transform timepoint into list of timestamps
+        data_dict["timestamp"] = data_dict["timestamp"].map(lambda x: mapping[x])
+        # Explode timestamp lists
+        data_dict = data_dict.explode("timestamp")
+        # Update index, as datetime
+        data_dict.index = pd.to_datetime(data_dict["timestamp"])
+        data_dict = data_dict.sort_index()
+        # Remove temp timestamp column
+        data_dict = data_dict.drop("timestamp", axis=1)
+
+        parsed_data[key] = data_dict
+
+    return parsed_data
 
 
 
