@@ -1,6 +1,7 @@
 import re
 
 import pandas as pd
+import re
 
 from switchwrapper import const
 
@@ -77,13 +78,16 @@ def parse_timepoints(var_dict, variables, mapping_info):
     file of `switch` and un-maps the temporal reduction timepoints back into
     a timestamp-indexed dataframe.
 
-    :param dict var_dict: the dictionary contained in solution._list[0].Variable
-        of the output pickle file of ``switch``
-    :param list variables: a list of timeseries variables to parse out
+    :param dict var_dict: the dictionary of variables to unpack
+    :param list variables: a list of timeseries variable strings to parse out
     :param dict mapping: a dictionary of timepoints to a list containing
         all the component time stamps
-    :return (*dict*): a dictionary where the keys are the variable names
-       given the values are pandas with a timestamp index.
+    :return (*dict*): a dictionary where the keys are the variable name strings
+       and the values are pandas dataframes. The index of these dataframes
+       are the timestamps contained in the mapping dictionary values.
+       The columns of these dataframes are a comma-separated string of the
+       parameters embedded in the key of the original input dictionary with
+       the timepoint removed and preserved order otherwise.
     """
 
     # Initialize dictionary of variables: set(column names)
@@ -92,14 +96,13 @@ def parse_timepoints(var_dict, variables, mapping_info):
     # Parse out column names, removing the timepoint
     for key in var_dict:
         # Split pickle dictionary key into variable name and parameters
-        split_point = key.find("[")
-        var_name = key[:split_point]
-        after_split = split_point + 1
-        var_params = key[after_split:-1].split(",")
+        match = re.match(r'(.*?)\[(.*?)\]', key)
+        var_name = match.group(1)
 
         # Remove timepoint, and add the rest to the column name dictionary
         if var_name in variables:
-            timepoint = var_params.pop(const.output_timeseries_format[var_name])
+            var_params = match.group(2).split(',')
+            var_params.pop(const.output_timeseries_format[var_name])
             var_columns[var_name].add(",".join(var_params))
 
     # Initialize final dictionary to return
@@ -116,16 +119,15 @@ def parse_timepoints(var_dict, variables, mapping_info):
         # Cast as pandas dataframe
         data_dict = pd.DataFrame.from_dict(data_dict)
         # Create column to explode on
-        data_dict["timestamp"] = data_dict.index
+        data_dict.reset_index(inplace=True)
         # Transform timepoint into list of timestamps
-        data_dict["timestamp"] = data_dict["timestamp"].map(lambda x: mapping[x])
+        data_dict["index"] = data_dict["index"].map(mapping)
         # Explode timestamp lists
-        data_dict = data_dict.explode("timestamp")
-        # Update index, as datetime
-        data_dict.index = pd.to_datetime(data_dict["timestamp"])
-        data_dict = data_dict.sort_index()
-        # Remove temp timestamp column
-        data_dict = data_dict.drop("timestamp", axis=1)
+        data_dict = data_dict.explode("index")
+        # Update index, as sorted datetime
+        data_dict.set_index('index', inplace=True)
+        data_dict.index = pd.to_datetime(data_dict.index)
+        data_dict.sort_index(inplace=True)
 
         parsed_data[key] = data_dict
 
