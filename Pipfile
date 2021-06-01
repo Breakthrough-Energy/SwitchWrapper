@@ -1,0 +1,14 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+black = "*"
+pytest = "*"
+
+[packages]
+haversine = "~=2.3"
+pandas = "~=1.2"
+powersimdata = {editable = true, git = "https://github.com/Breakthrough-Energy/PowerSimData"}
+switch-model = "==2.0.6"
