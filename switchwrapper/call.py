@@ -24,8 +24,12 @@ def launch_switch(input_folder, solver="gurobi", suffixes="dual", verbose=True):
     if not os.path.isdir(input_folder):
         abspath = os.path.abspath(input_folder)
         raise ValueError(f"input_folder must be a valid directory, got {abspath}")
-    if not os.path.isdir(os.path.join(input_folder, "inputs")):
+    inputs_subfolder = os.path.join(input_folder, "inputs")
+    if not os.path.isdir(inputs_subfolder):
         raise ValueError("input_folder must contain a subdirectory named 'inputs'")
+    modules_filepath = os.path.join(input_folder, "modules.txt")
+    if not os.path.isfile(modules_filepath):
+        raise ValueError("input_folder must contain a file named 'modules.txt'")
     if not isinstance(solver, str) and solver is not None:
         raise TypeError("solver must be a str or None")
     if not isinstance(suffixes, str) and suffixes is not None:
@@ -33,7 +37,7 @@ def launch_switch(input_folder, solver="gurobi", suffixes="dual", verbose=True):
     if not isinstance(verbose, bool):
         raise TypeError("verbose must be bool")
 
-    # Construct subprocess call
+    # Construct subprocess call, starting with user-provided inputs
     cmd = ["switch", "solve"]
     if solver is not None:
         cmd += ["--solver", solver]
@@ -42,13 +46,14 @@ def launch_switch(input_folder, solver="gurobi", suffixes="dual", verbose=True):
     if verbose:
         cmd += ["--verbose"]
 
-    # Launch
-    original_directory = os.getcwd()
-    try:
-        os.chdir(input_folder)
-        subprocess.run(cmd)
-    finally:
-        os.chdir(original_directory)
+    # Then add inferred inputs about the folders
+    outputs_subfolder = os.path.join(input_folder, "outputs")
+    cmd += ["--inputs-dir", inputs_subfolder]
+    cmd += ["--module-list", modules_filepath]
+    cmd += ["--outputs-dir", outputs_subfolder]
+
+    # Finally, launch
+    subprocess.run(cmd)
 
 
 if __name__ == "__main__":
