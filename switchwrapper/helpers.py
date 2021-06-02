@@ -70,3 +70,22 @@ def recover_plant_indices(switch_plant_ids):
             cnt += 1
             plant_ids[new_plant_index_start + cnt] = ind
     return pd.Series(plant_ids)
+
+
+def map_branch_indices_to_bus_tuple(grid):
+    """Map the branch indices to from/to bus tuples based on a grid instance.
+
+    :param powersimdata.input.grid.Grid grid: grid instance.
+    :return: (*tuple*) -- a pair of pandas.Series objects for acline and dcline
+        respectively, which are indexed by original branch ids and values are
+        corresponding tuples (from_bus_id, to_bus_id).
+    """
+    acline = pd.Series(
+        list(zip(grid.branch["from_bus_id"], grid.branch["to_bus_id"])),
+        index=grid.branch.index,
+    )
+    dcline = pd.Series(
+        list(zip(grid.dcline["from_bus_id"], grid.dcline["to_bus_id"])),
+        index=grid.dcline.index,
+    )
+    return acline, dcline
