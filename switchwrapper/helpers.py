@@ -72,6 +72,24 @@ def recover_plant_indices(switch_plant_ids):
     return pd.Series(plant_ids)
 
 
+def recover_branch_indices(switch_branch_ids):
+    """Recover the branch indices from Switch outputs.
+
+    :param iterable switch_branch_ids: Switch branch indices.
+    :return: (*tuple*) -- a pair of pandas.Series objects for acline and dcline
+        respectively, which are indexed by original branch ids and values are
+        corresponding Switch branch indices.
+    """
+    ac_branch_ids = dict()
+    dc_branch_ids = dict()
+    for ind in switch_branch_ids:
+        if ind[-2:] == "ac":
+            ac_branch_ids[int(ind[:-2])] = ind
+        else:
+            dc_branch_ids[int(ind[:-2])] = ind
+    return pd.Series(ac_branch_ids), pd.Series(dc_branch_ids, dtype=str)
+
+
 def map_branch_indices_to_bus_tuple(grid):
     """Map the branch indices to from/to bus tuples based on a grid instance.
 
