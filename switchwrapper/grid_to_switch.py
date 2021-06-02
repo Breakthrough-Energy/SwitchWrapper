@@ -4,7 +4,7 @@ import pandas as pd
 from haversine import haversine
 
 from switchwrapper import const
-from switchwrapper.helpers import make_indices
+from switchwrapper.helpers import make_plant_indices
 
 
 def grid_to_switch(grid, output_folder):
@@ -261,7 +261,7 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
     :return: (*pandas.DataFrame*) -- data frame of generation project info.
     """
     # Extract information from inputs
-    original_plant_indices, hypothetical_plant_indices = make_indices(plant.index)
+    original_plant_indices, hypothetical_plant_indices = make_plant_indices(plant.index)
     all_plant_indices = original_plant_indices + hypothetical_plant_indices
 
     # Use inputs for intermediate calculations
@@ -318,7 +318,7 @@ def build_gen_build_costs(plant, cost_at_min_power, inv_period):
     :return: (*pandas.DataFrame*) -- data frame of existing and hypothetical generators.
     """
     # Build lists for each columns, which apply to one year
-    original_plant_indices, hypothetical_plant_indices = make_indices(plant.index)
+    original_plant_indices, hypothetical_plant_indices = make_plant_indices(plant.index)
     overnight_costs = plant["type"].map(const.investment_costs_by_type).tolist()
     gen_fixed_om = (cost_at_min_power / plant.Pmax).fillna(0.0).tolist()
 
@@ -359,7 +359,7 @@ def build_gen_build_predetermined(plant):
         },
         inplace=True,
     )
-    original_plant_indices, _ = make_indices(plant.index)
+    original_plant_indices, _ = make_plant_indices(plant.index)
     gen_build_predetermined["GENERATION_PROJECT"] = original_plant_indices
     gen_build_predetermined = gen_build_predetermined[
         ["GENERATION_PROJECT", "build_year", "gen_predetermined_cap"]
