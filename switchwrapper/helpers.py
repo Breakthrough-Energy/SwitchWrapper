@@ -37,3 +37,23 @@ def make_plant_indices(plant_ids):
     original_plant_indices = [f"g{p}" for p in plant_ids]
     hypothetical_plant_indices = [f"{o}i" for o in original_plant_indices]
     return original_plant_indices, hypothetical_plant_indices
+
+
+def recover_plant_indices(switch_plant_ids):
+    """Recover the plant indices from Switch outputs.
+
+    :param iterable switch_plant_ids: Switch plant indices.
+    :return: (*pandas.Series*) -- indices are original plant ids with new plants
+        added, values are Switch plant indices.
+    """
+    original_plant_num = sum(1 for ind in switch_plant_ids if ind[-1] != "i")
+    plant_ids = dict()
+    new_plant_index_start = int(switch_plant_ids[original_plant_num - 1][1:])
+    cnt = 0
+    for ind in switch_plant_ids:
+        if ind[-1] != "i":
+            plant_ids[int(ind[1:])] = ind
+        else:
+            cnt += 1
+            plant_ids[new_plant_index_start + cnt] = ind
+    return pd.Series(plant_ids)
