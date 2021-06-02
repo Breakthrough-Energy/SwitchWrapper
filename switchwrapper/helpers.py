@@ -46,10 +46,7 @@ def make_branch_indices(branch_ids, dc=False):
     :param bool dc: branch_ids are for dclines or not, defaults to False.
     :return: (*list*) -- list of branch indices for input to Switch
     """
-    if dc:
-        return [str(i) + "dc" for i in branch_ids]
-    else:
-        return [str(i) + "ac" for i in branch_ids]
+    return [f"{i}dc" if dc else f"{i}ac" for i in branch_ids]
 
 
 def recover_plant_indices(switch_plant_ids):
