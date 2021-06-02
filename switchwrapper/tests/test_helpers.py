@@ -2,7 +2,7 @@ import pandas as pd
 from powersimdata.tests.mock_grid import MockGrid
 
 from switchwrapper.helpers import (
-    map_branch_indices_to_bus_tuple,
+    branch_indices_to_bus_tuple,
     recover_branch_indices,
     recover_plant_indices,
 )
@@ -45,9 +45,9 @@ def test_recover_branch_indices():
         assert all([s.equals(e[i]) for i, s in enumerate(recover_branch_indices(a))])
 
 
-def test_map_branch_indices_to_bus_tuple():
+def test_branch_indices_to_bus_tuple():
     grid = MockGrid(grid_attrs={"branch": mock_branch, "dcline": mock_dcline})
-    acline, dcline = map_branch_indices_to_bus_tuple(grid)
+    acline, dcline = branch_indices_to_bus_tuple(grid)
     expected_acline = pd.Series(
         {
             101: (1, 2),

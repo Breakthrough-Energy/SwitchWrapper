@@ -90,7 +90,7 @@ def recover_branch_indices(switch_branch_ids):
     return pd.Series(ac_branch_ids), pd.Series(dc_branch_ids, dtype=str)
 
 
-def map_branch_indices_to_bus_tuple(grid):
+def branch_indices_to_bus_tuple(grid):
     """Map the branch indices to from/to bus tuples based on a grid instance.
 
     :param powersimdata.input.grid.Grid grid: grid instance.
