@@ -66,10 +66,10 @@ def parse_timepoints(var_dict, variables, mapping_info):
     file of `switch` and un-maps the temporal reduction timepoints back into
     a timestamp-indexed dataframe.
 
-    :param dict var_dict: a flat dictionary where the keys are a combination
-        of variable names and variable parameters and the values are a
-        dictionary where Value is the datapoint for that combination of variable
-        name and parameters.
+    :param dict var_dict: a flat dictionary where the keys are a string
+        containing both variable names and variable parameters and the values
+        are a dictionary where Value is the datapoint for that combination of
+        variable name and parameters.
     :param list variables: a list of timeseries variable strings to parse out
     :param dict mapping: a dictionary of timepoints to a list containing
         all the component time stamps
@@ -93,8 +93,8 @@ def parse_timepoints(var_dict, variables, mapping_info):
         # Remove timepoint, and add the rest to the column name dictionary
         if var_name in variables:
             var_params = match.group(2).split(",")
-            var_params.pop(const.output_timeseries_format[var_name])
-            var_columns[var_name].add(",".join(var_params))
+            # Assume the timepoint is always the last parameter
+            var_columns[var_name].add(",".join(var_params[:-1]))
 
     # Initialize final dictionary to return
     parsed_data = {}
