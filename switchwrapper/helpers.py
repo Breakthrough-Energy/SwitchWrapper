@@ -39,6 +39,19 @@ def make_plant_indices(plant_ids):
     return original_plant_indices, hypothetical_plant_indices
 
 
+def make_branch_indices(branch_ids, dc=False):
+    """Make the indices of existing branch for input to Switch.
+
+    :param iterable branch_ids: list of original branch ids.
+    :param bool dc: branch_ids are for dclines or not, defaults to False.
+    :return: (*list*) -- list of branch indices for input to Switch
+    """
+    if dc:
+        return [str(i) + "dc" for i in branch_ids]
+    else:
+        return [str(i) + "ac" for i in branch_ids]
+
+
 def recover_plant_indices(switch_plant_ids):
     """Recover the plant indices from Switch outputs.
 
