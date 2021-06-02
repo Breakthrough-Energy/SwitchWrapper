@@ -1,7 +1,11 @@
 import pandas as pd
 from powersimdata.tests.mock_grid import MockGrid
 
-from switchwrapper.helpers import map_branch_indices_to_bus_tuple, recover_plant_indices
+from switchwrapper.helpers import (
+    map_branch_indices_to_bus_tuple,
+    recover_branch_indices,
+    recover_plant_indices,
+)
 
 mock_branch = {
     "branch_id": [101, 102, 103],
@@ -29,6 +33,16 @@ def test_recover_plant_indices():
     ]
     for a, e in zip(args, expected_return):
         assert e.equals(recover_plant_indices(a))
+
+
+def test_recover_branch_indices():
+    args = [["1ac", "2ac", "0dc"], ["1ac", "2ac"]]
+    expected_return = [
+        (pd.Series({1: "1ac", 2: "2ac"}), pd.Series({0: "0dc"})),
+        (pd.Series({1: "1ac", 2: "2ac"}), pd.Series(dtype=str)),
+    ]
+    for a, e in zip(args, expected_return):
+        assert all([s.equals(e[i]) for i, s in enumerate(recover_branch_indices(a))])
 
 
 def test_map_branch_indices_to_bus_tuple():
