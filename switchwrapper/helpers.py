@@ -49,19 +49,8 @@ def load_mapping(filename):
     :return: (*dict*) -- a dictionary of timepoints to a list containing
         all the component time stamps
     """
-    with open(filename, "r") as f:
-        mapping = {}
-
-        # Read headers
-        f.readline()
-
-        for line in f:
-            utc, timepoint = line.rstrip().split(",")
-
-            if timepoint in mapping:
-                mapping[timepoint].append(utc)
-            else:
-                mapping[timepoint] = [utc]
+    mapping_data = pd.read_csv(filename, index_col=0).groupby('timepoint')
+    mapping = {str(k): v.tolist() for k, v in mapping_data.groups.items()}
 
     return mapping
 
