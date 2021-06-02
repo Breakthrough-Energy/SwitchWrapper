@@ -1,7 +1,6 @@
 import re
 
 import pandas as pd
-import re
 
 from switchwrapper import const
 
@@ -49,7 +48,7 @@ def load_mapping(filename):
     :return: (*dict*) -- a dictionary of timepoints to a list containing
         all the component time stamps
     """
-    mapping_data = pd.read_csv(filename, index_col=0).groupby('timepoint')
+    mapping_data = pd.read_csv(filename, index_col=0).groupby("timepoint")
     mapping = {str(k): v.tolist() for k, v in mapping_data.groups.items()}
 
     return mapping
@@ -67,16 +66,19 @@ def parse_timepoints(var_dict, variables, mapping_info):
     file of `switch` and un-maps the temporal reduction timepoints back into
     a timestamp-indexed dataframe.
 
-    :param dict var_dict: the dictionary of variables to unpack
+    :param dict var_dict: a flat dictionary where the keys are a combination
+        of variable names and variable parameters and the values are a
+        dictionary where Value is the datapoint for that combination of variable
+        name and parameters.
     :param list variables: a list of timeseries variable strings to parse out
     :param dict mapping: a dictionary of timepoints to a list containing
         all the component time stamps
     :return (*dict*): a dictionary where the keys are the variable name strings
-       and the values are pandas dataframes. The index of these dataframes
-       are the timestamps contained in the mapping dictionary values.
-       The columns of these dataframes are a comma-separated string of the
-       parameters embedded in the key of the original input dictionary with
-       the timepoint removed and preserved order otherwise.
+        and the values are pandas dataframes. The index of these dataframes
+        are the timestamps contained in the mapping dictionary values.
+        The columns of these dataframes are a comma-separated string of the
+        parameters embedded in the key of the original input dictionary with
+        the timepoint removed and preserved order otherwise.
     """
 
     # Initialize dictionary of variables: set(column names)
@@ -85,12 +87,12 @@ def parse_timepoints(var_dict, variables, mapping_info):
     # Parse out column names, removing the timepoint
     for key in var_dict:
         # Split pickle dictionary key into variable name and parameters
-        match = re.match(r'(.*?)\[(.*?)\]', key)
+        match = re.match(r"(.*?)\[(.*?)\]", key)
         var_name = match.group(1)
 
         # Remove timepoint, and add the rest to the column name dictionary
         if var_name in variables:
-            var_params = match.group(2).split(',')
+            var_params = match.group(2).split(",")
             var_params.pop(const.output_timeseries_format[var_name])
             var_columns[var_name].add(",".join(var_params))
 
@@ -114,7 +116,7 @@ def parse_timepoints(var_dict, variables, mapping_info):
         # Explode timestamp lists
         data_dict = data_dict.explode("index")
         # Update index, as sorted datetime
-        data_dict.set_index('index', inplace=True)
+        data_dict.set_index("index", inplace=True)
         data_dict.index = pd.to_datetime(data_dict.index)
         data_dict.sort_index(inplace=True)
 
