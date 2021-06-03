@@ -56,16 +56,18 @@ def recover_plant_indices(switch_plant_ids):
     :return: (*pandas.Series*) -- indices are original plant ids with new plants
         added, values are Switch plant indices.
     """
-    original_plant_num = sum(1 for ind in switch_plant_ids if ind[-1] != "i")
     plant_ids = dict()
-    new_plant_index_start = int(switch_plant_ids[original_plant_num - 1][1:])
+    for ind in switch_plant_ids[::-1]:
+        if ind[-1] != "i":
+            last_original_plant_id = int(ind[1:])
+            break
     cnt = 0
     for ind in switch_plant_ids:
         if ind[-1] != "i":
             plant_ids[int(ind[1:])] = ind
         else:
             cnt += 1
-            plant_ids[new_plant_index_start + cnt] = ind
+            plant_ids[last_original_plant_id + cnt] = ind
     return pd.Series(plant_ids)
 
 
