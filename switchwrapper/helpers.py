@@ -2,7 +2,6 @@ import re
 
 import pandas as pd
 
-from switchwrapper import const
 
 def match_variables(variables, pattern, columns):
     """Search through dictionary of variables, extracting data frame of values.
@@ -45,13 +44,13 @@ def load_mapping(filename):
         the given mapping into a format expected by the conversion function
 
     :param str filename: path to the mapping csv
-    :return: (*dict*) -- a dictionary of timepoints to a list containing
+    :return: (*pandas.DataFrame*) -- a dataframe with of timepoints to a list containing
         all the component time stamps
     """
-    mapping_data = pd.read_csv(filename, index_col=0).groupby("timepoint")
-    mapping = {str(k): v.tolist() for k, v in mapping_data.groups.items()}
+    mapping = pd.read_csv(filename, index_col=0)
 
     return mapping
+
 
 def make_branch_indices(branch_ids, dc=False):
     """Make the indices of existing branch for input to Switch.
@@ -61,8 +60,9 @@ def make_branch_indices(branch_ids, dc=False):
     """
     return [f"{i}dc" if dc else f"{i}ac" for i in branch_ids]
 
-def parse_timepoints(var_dict, variables, mapping_info):
-    """ Takes the solution variable dictionary contained in the output pickle
+
+def parse_timepoints(var_dict, variables, mapping):
+    """Takes the solution variable dictionary contained in the output pickle
     file of `switch` and un-maps the temporal reduction timepoints back into
     a timestamp-indexed dataframe.
 
@@ -80,47 +80,24 @@ def parse_timepoints(var_dict, variables, mapping_info):
         parameters embedded in the key of the original input dictionary with
         the timepoint removed and preserved order otherwise.
     """
-
-    # Initialize dictionary of variables: set(column names)
-    var_columns = {key: set([]) for key in variables}
-
-    # Parse out column names, removing the timepoint
-    for key in var_dict:
-        # Split pickle dictionary key into variable name and parameters
-        match = re.match(r"(.*?)\[(.*?)\]", key)
-        var_name = match.group(1)
-
-        # Remove timepoint, and add the rest to the column name dictionary
-        if var_name in variables:
-            var_params = match.group(2).split(",")
-            # Assume the timepoint is always the last parameter
-            var_columns[var_name].add(",".join(var_params[:-1]))
-
     # Initialize final dictionary to return
     parsed_data = {}
-    for key in var_columns:
-        # Initialize dictionary to turn into pandas dataframe
-        data_dict = {a: {} for a in var_columns[key]}
-        # Remap data for only this variable
-        for val in var_columns[key]:
-            for timepoint in mapping:
-                orig_key = key + "[" + val + "," + timepoint + "]"
-                data_dict[val][timepoint] = var_dict[orig_key]["Value"]
 
-        # Cast as pandas dataframe
-        data_dict = pd.DataFrame.from_dict(data_dict)
-        # Create column to explode on
-        data_dict.reset_index(inplace=True)
-        # Transform timepoint into list of timestamps
-        data_dict["index"] = data_dict["index"].map(mapping)
-        # Explode timestamp lists
-        data_dict = data_dict.explode("index")
-        # Update index, as sorted datetime
-        data_dict.set_index("index", inplace=True)
-        data_dict.index = pd.to_datetime(data_dict.index)
-        data_dict.sort_index(inplace=True)
+    for key in variables:
+        # Parse out a dataframe for each variable
+        df = match_variables(
+            var_dict,
+            key + r"\[(?P<params>.*),(?P<timepoint>.*?)\]",
+            ["params", "timepoint"],
+        )
+        # Unstack such that the timepoints are the indices
+        df = df.set_index(["timepoint", "params"]).unstack()
+        # Cast timepoints as ints to match mapping
+        df.index = df.index.astype(int)
+        # Expand rows to all timestamps
+        df = df.loc[mapping["timepoint"]].set_index(mapping.index)
 
-        parsed_data[key] = data_dict
+        parsed_data[key] = df
 
     return parsed_data
 
