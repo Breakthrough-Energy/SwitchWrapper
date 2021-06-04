@@ -54,6 +54,7 @@ def load_mapping(filename):
 
 def make_branch_indices(branch_ids, dc=False):
     """Make the indices of existing branch for input to Switch.
+
     :param iterable branch_ids: list of original branch ids.
     :param bool dc: branch_ids are for dclines or not, defaults to False.
     :return: (*list*) -- list of branch indices for input to Switch
@@ -78,7 +79,9 @@ def parse_timepoints(var_dict, variables, mapping):
         are the timestamps contained in the mapping dictionary values.
         The columns of these dataframes are a comma-separated string of the
         parameters embedded in the key of the original input dictionary with
-        the timepoint removed and preserved order otherwise.
+        the timepoint removed and preserved order otherwise. If no variables
+        are found in the input dictionary, the value will be None
+
     """
     # Initialize final dictionary to return
     parsed_data = {}
@@ -90,6 +93,12 @@ def parse_timepoints(var_dict, variables, mapping):
             key + r"\[(?P<params>.*),(?P<timepoint>.*?)\]",
             ["params", "timepoint"],
         )
+
+        # If no such variable was found, set dataframe to None
+        if df.empty:
+            parsed_data[key] = None
+            continue
+
         # Unstack such that the timepoints are the indices
         df = df.set_index(["timepoint", "params"]).unstack()
         # Cast timepoints as ints to match mapping
