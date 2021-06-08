@@ -14,6 +14,8 @@ switch_modules = [
     "switch_model.reporting",
 ]
 
+base_year = 2019
+
 financial_parameters = {
     "discount_rate": 0.079,
     "interest_rate": 0.029,
