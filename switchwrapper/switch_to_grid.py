@@ -89,7 +89,7 @@ def add_gen_upgrades_to_grid(grid, build_gen, year):
     :param int year: upgrades year to apply upgrades from.
     """
     # Extract indices
-    plant_ids = recover_plant_indices(build_gen["gen_id"])
+    plant_ids, _ = recover_plant_indices(build_gen["gen_id"])
     num_original_plants = len(grid.plant)
     new_plant_ids = plant_ids.iloc[num_original_plants:]
     new_plant_id_unmapping = pd.Series(new_plant_ids.index, index=new_plant_ids)
