@@ -27,16 +27,21 @@ def match_variables(variables, pattern, columns):
     return df
 
 
-def make_plant_indices(plant_ids):
+def make_plant_indices(plant_ids, storage_candidates=None):
     """Make the indices for existing and hypothetical generators for input to Switch.
 
     :param iterable plant_ids: plant IDs.
-    :return: (*tuple*) -- The first element is a list of indices for existing generators
-        and the second element is a list of indices for hypothetical generators.
+    :param set storage_candidates: buses at which to enable storage expansion.
+    :return: (*dict*) -- keys are {'existing', 'expansion', 'storage'}, values are
+        lists of indices (str) for each sub-type.
     """
-    original_plant_indices = [f"g{p}" for p in plant_ids]
-    hypothetical_plant_indices = [f"{o}i" for o in original_plant_indices]
-    return original_plant_indices, hypothetical_plant_indices
+    indices = {"existing": [f"g{p}" for p in plant_ids]}
+    indices["expansion"] = [f"{e}i" for e in indices["existing"]]
+    if storage_candidates is None:
+        indices["storage"] = []
+    else:
+        indices["storage"] = [f"s{b}i" for b in sorted(storage_candidates)]
+    return indices
 
 
 def load_mapping(filename):
