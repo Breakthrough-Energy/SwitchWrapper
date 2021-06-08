@@ -24,15 +24,19 @@ def test_recover_plant_indices():
     args = [
         ["g1", "g2", "g1i", "g2i"],
         ["g1", "g2", "g1i"],
+        ["g1", "g2", "g1i", "s2i"],
         ["g1", "g2"],
+        ["g1", "g2", "s1i"],
     ]
     expected_return = [
-        pd.Series({1: "g1", 2: "g2", 3: "g1i", 4: "g2i"}),
-        pd.Series({1: "g1", 2: "g2", 3: "g1i"}),
-        pd.Series({1: "g1", 2: "g2"}),
+        (pd.Series({1: "g1", 2: "g2", 3: "g1i", 4: "g2i"}), pd.Series(dtype=str)),
+        (pd.Series({1: "g1", 2: "g2", 3: "g1i"}), pd.Series(dtype=str)),
+        (pd.Series({1: "g1", 2: "g2", 3: "g1i"}), pd.Series({4: "s2i"})),
+        (pd.Series({1: "g1", 2: "g2"}), pd.Series(dtype=str)),
+        (pd.Series({1: "g1", 2: "g2"}), pd.Series({3: "s1i"})),
     ]
     for a, e in zip(args, expected_return):
-        assert e.equals(recover_plant_indices(a))
+        assert all([s.equals(e[i]) for i, s in enumerate(recover_plant_indices(a))])
 
 
 def test_recover_branch_indices():
