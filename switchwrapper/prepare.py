@@ -14,6 +14,7 @@ def prepare_inputs(
     timepoints,
     timestamp_to_timepoints,
     switch_files_root=None,
+    storage_candidate_buses=None,
 ):
     """Prepare all grid and profile data into a format expected by Switch.
 
@@ -29,6 +30,7 @@ def prepare_inputs(
     :param pandas.Series timestamp_to_timepoints: timepoints (values) of each timestamp
         (index).
     :param str switch_files_root: the location to save all Switch files.
+    :param set storage_candidate_buses: buses at which to enable storage expansion.
     """
     # Validate the input data
     _check_timepoints(timepoints)
@@ -38,7 +40,7 @@ def prepare_inputs(
     inputs_folder = os.path.join(switch_files_root, "inputs")
     os.makedirs(inputs_folder, exist_ok=True)
 
-    grid_to_switch(grid, inputs_folder)
+    grid_to_switch(grid, inputs_folder, storage_candidate_buses)
     profiles_to_switch(
         grid, profiles, timepoints, timestamp_to_timepoints, inputs_folder
     )
