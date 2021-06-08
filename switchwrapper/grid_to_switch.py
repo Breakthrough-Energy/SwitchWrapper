@@ -7,12 +7,13 @@ from switchwrapper import const
 from switchwrapper.helpers import make_branch_indices, make_plant_indices
 
 
-def grid_to_switch(grid, output_folder):
+def grid_to_switch(grid, output_folder, storage_candidate_buses=None):
     """Convert relevant data from a Grid object and command-line-prompted user inputs
     to CSVs for use with Switch.
 
     :param powersimdata.input.grid.Grid grid: grid instance.
     :param str output_folder: the location to save outputs, created as necessary.
+    :param set storage_candidate_buses: buses at which to enable storage expansion.
     """
     # First, prompt the user for information not contained in const or the passed grid
     base_year = get_base_year()
@@ -37,7 +38,7 @@ def grid_to_switch(grid, output_folder):
         output_folder, "generation_projects_info.csv"
     )
     generation_project_info = build_generation_projects_info(
-        grid.plant, single_segment_slope, average_fuel_cost
+        grid.plant, single_segment_slope, average_fuel_cost, storage_candidate_buses
     )
     generation_project_info.to_csv(generation_projects_info_filepath, index=False)
 
@@ -249,7 +250,12 @@ def build_fuel_cost(average_fuel_cost, base_year, inv_period):
     return fuel_cost
 
 
-def build_generation_projects_info(plant, single_segment_slope, average_fuel_cost):
+def build_generation_projects_info(
+    plant,
+    single_segment_slope,
+    average_fuel_cost,
+    storage_candidate_buses=None,
+):
     """Build data frame for generation_projects_info.
 
     :param pandas.DataFrame plant: data frame of current generators.
@@ -258,11 +264,13 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
     :param pandas.DataFrame average_fuel_cost: average fuel cost by bus_id, from
         :func:`calculate_average_fuel_cost`.
         This is single-column ("GenFuelCost") and multi-index ("bus_id", "fuel").
+    :param set storage_candidate_buses: buses at which to enable storage expansion.
     :return: (*pandas.DataFrame*) -- data frame of generation project info.
     """
     # Extract information from inputs
-    original_plant_indices, hypothetical_plant_indices = make_plant_indices(plant.index)
-    all_plant_indices = original_plant_indices + hypothetical_plant_indices
+    indices = make_plant_indices(plant.index, storage_candidate_buses)
+    all_plant_indices = indices["existing"] + indices["expansion"] + indices["storage"]
+    num_storage = len(indices["storage"])
 
     # Use inputs for intermediate calculations
     fuel_gencost = single_segment_slope * const.assumed_fuel_share_of_gencost
@@ -277,33 +285,50 @@ def build_generation_projects_info(plant, single_segment_slope, average_fuel_cos
 
     # Finally, construct data frame and return
     df = pd.DataFrame(index=pd.Index(all_plant_indices, name="GENERATION_PROJECT"))
-    df["gen_tech"] = plant.type.tolist() * 2
-    df["gen_load_zone"] = plant.bus_id.tolist() * 2
+    df["gen_tech"] = (
+        plant.type.tolist() * 2 + [const.storage_parameters["tech"]] * num_storage
+    )
+    gen_load_zone = plant.bus_id.tolist() * 2
+    if storage_candidate_buses is not None:
+        gen_load_zone += sorted(storage_candidate_buses)
+    df["gen_load_zone"] = gen_load_zone
     df["gen_connect_cost_per_mw"] = 0
     df["gen_capacity_limit_mw"] = "."
-    df.loc[hypothetical_plant_indices, "gen_capacity_limit_mw"] = [
+    df.loc[indices["expansion"], "gen_capacity_limit_mw"] = [
         const.assumed_capacity_limits.get(t, const.assumed_capacity_limits["default"])
         for t in plant.type.tolist()
     ]
-    df["gen_full_load_heat_rate"] = estimated_heatrate.tolist() * 2
-    df["gen_variable_om"] = nonfuel_gencost.tolist() * 2
+    df["gen_full_load_heat_rate"] = estimated_heatrate.tolist() * 2 + [0] * num_storage
+    df["gen_variable_om"] = nonfuel_gencost.tolist() * 2 + [0] * num_storage
     df["gen_max_age"] = [
         const.assumed_ages_by_type.get(t, const.assumed_ages_by_type["default"])
         for t in plant.type.tolist() * 2
-    ]
+    ] + [const.storage_parameters["max_age"]] * num_storage
     df["gen_min_build_capacity"] = 0
     df["gen_scheduled_outage_rate"] = 0
     df["gen_forced_outage_rate"] = 0
-    df["gen_is_variable"] = list(plant.type.isin(const.variable_types).astype(int)) * 2
-    df["gen_is_baseload"] = list(plant.type.isin(const.baseload_types).astype(int)) * 2
+    df["gen_is_variable"] = (
+        list(plant.type.isin(const.variable_types).astype(int)) * 2 + [0] * num_storage
+    )
+    df["gen_is_baseload"] = (
+        list(plant.type.isin(const.baseload_types).astype(int)) * 2 + [0] * num_storage
+    )
     df["gen_is_cogen"] = 0
-    df["gen_energy_source"] = plant.type.map(const.fuel_mapping).tolist() * 2
+    df["gen_energy_source"] = (
+        plant.type.map(const.fuel_mapping).tolist() * 2
+        + const.fuel_mapping["storage"] * num_storage
+    )
     df.loc[df.gen_energy_source.isin(const.non_fuels), "gen_full_load_heat_rate"] = "."
     df["gen_unit_size"] = "."
     df["gen_ccs_capture_efficiency"] = "."
     df["gen_ccs_energy_load"] = "."
     df["gen_storage_efficiency"] = "."
     df["gen_store_to_release_ratio"] = "."
+    if num_storage > 0:
+        gen_cycle_limit = ["."] * (len(indices["existing"]) + len(indices["expansion"]))
+        df["gen_storage_max_cycles_per_year"] = (
+            gen_cycle_limit + [const.storage_parameters["max_cycles"]] * num_storage
+        )
     df.reset_index(inplace=True)
 
     return df
