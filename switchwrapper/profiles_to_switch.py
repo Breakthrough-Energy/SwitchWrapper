@@ -2,7 +2,7 @@ import os
 
 import pandas as pd
 
-from switchwrapper.helpers import make_indices
+from switchwrapper.helpers import make_plant_indices
 
 
 def profiles_to_switch(
@@ -161,10 +161,8 @@ def build_variable_capacity_factors(gen_profiles, plant, timestamp_to_timepoints
     variable_capacity_factors = variable_capacity_factors[column_names]
 
     # Copy profiles to apply to current and hypothetical plants
-    original_plant_indices, hypothetical_plant_indices = make_indices(
-        variable_capacity_factors["GENERATION_PROJECT"]
-    )
-    all_plant_indices = original_plant_indices + hypothetical_plant_indices
+    indices = make_plant_indices(variable_capacity_factors["GENERATION_PROJECT"])
+    all_plant_indices = indices["existing"] + indices["expansion"]
     variable_capacity_factors = pd.concat([variable_capacity_factors] * 2)
     variable_capacity_factors["GENERATION_PROJECT"] = all_plant_indices
 
