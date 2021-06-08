@@ -120,10 +120,12 @@ def recover_plant_indices(switch_plant_ids):
     """Recover the plant indices from Switch outputs.
 
     :param iterable switch_plant_ids: Switch plant indices.
-    :return: (*pandas.Series*) -- indices are original plant ids with new plants
-        added, values are Switch plant indices.
+    :return: (*tuple*) -- a pair of pandas.Series objects for plant and storage
+        respectively. The plant series is indexed by original plant IDs (with new plants
+        added), values are Switch plant indices. The storage series is indexed by
+        the new plant IDs for storage, values are Switch plant indices.
     """
-    plant_ids = dict()
+    plant_ids, storage_ids = dict(), dict()
     for ind in switch_plant_ids[::-1]:
         if ind[-1] != "i":
             last_original_plant_id = int(ind[1:])
@@ -134,8 +136,11 @@ def recover_plant_indices(switch_plant_ids):
             plant_ids[int(ind[1:])] = ind
         else:
             cnt += 1
-            plant_ids[last_original_plant_id + cnt] = ind
-    return pd.Series(plant_ids)
+            if ind[0] == "s":
+                storage_ids[last_original_plant_id + cnt] = ind
+            else:
+                plant_ids[last_original_plant_id + cnt] = ind
+    return pd.Series(plant_ids), pd.Series(storage_ids, dtype=str)
 
 
 def recover_branch_indices(switch_branch_ids):
