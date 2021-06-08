@@ -19,6 +19,14 @@ financial_parameters = {
     "interest_rate": 0.029,
 }
 
+storage_parameters = {
+    "max_age": 20,  # years
+    "max_cycles": 200,  # cycles per year
+    "overnight_power_cost": 0,
+    "overnight_energy_cost": 2.13e5,
+    "tech": "Battery",
+}
+
 fuels = ["Coal", "NaturalGas", "Uranium", "Petroleum", "Other"]
 
 fuel_mapping = {
@@ -32,6 +40,7 @@ fuel_mapping = {
     "nuclear": "Uranium",
     "dfo": "Petroleum",
     "other": "Other",
+    "storage": "Electricity",
 }
 
 load_parameters = {
@@ -51,6 +60,7 @@ non_fuels = [
     "Solar",
     "Water",
     "Geothermal",
+    "Electricity",
 ]
 
 investment_costs_by_type = {
