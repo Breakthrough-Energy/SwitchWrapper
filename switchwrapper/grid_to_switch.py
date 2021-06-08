@@ -43,7 +43,9 @@ def grid_to_switch(grid, output_folder, storage_candidate_buses=None):
     generation_project_info.to_csv(generation_projects_info_filepath, index=False)
 
     gen_build_costs_filepath = os.path.join(output_folder, "gen_build_costs.csv")
-    gen_build_costs = build_gen_build_costs(grid.plant, cost_at_min_power, inv_period)
+    gen_build_costs = build_gen_build_costs(
+        grid.plant, cost_at_min_power, inv_period, storage_candidate_buses
+    )
     gen_build_costs.to_csv(gen_build_costs_filepath, index=False)
 
     gen_build_predetermined_filepath = os.path.join(
@@ -334,28 +336,43 @@ def build_generation_projects_info(
     return df
 
 
-def build_gen_build_costs(plant, cost_at_min_power, inv_period):
+def build_gen_build_costs(
+    plant,
+    cost_at_min_power,
+    inv_period,
+    storage_candidate_buses=None,
+):
     """Build a data frame of generation projects, both existing and hypothetical.
 
     :param pandas.DataFrame plant: data frame of current generators.
     :param pandas.Series cost_at_min_power: cost of running generator at minimum power.
     :param list inv_period: list of investment period years.
+    :param set storage_candidate_buses: buses at which to enable storage expansion.
     :return: (*pandas.DataFrame*) -- data frame of existing and hypothetical generators.
     """
-    # Build lists for each columns, which apply to one year
-    original_plant_indices, hypothetical_plant_indices = make_plant_indices(plant.index)
-    overnight_costs = plant["type"].map(const.investment_costs_by_type).tolist()
-    gen_fixed_om = (cost_at_min_power / plant.Pmax).fillna(0.0).tolist()
+    # Build indices, extract constants used to populate build costs
+    indices = make_plant_indices(plant.index, storage_candidate_buses)
+    num_existing = len(indices["existing"])
+    num_expansion = len(indices["expansion"])
+    num_storage = len(indices["storage"])
+    # Build additional lists for each column
+    existing_overnight = plant["type"].map(const.investment_costs_by_type).tolist()
+    expansion_overnight = (
+        existing_overnight
+        + [const.storage_parameters["overnight_power_cost"]] * num_storage
+    )
+    existing_om = (cost_at_min_power / plant.Pmax).fillna(0.0).tolist()
+    expansion_om = existing_om + [0] * num_storage
 
-    # Extend these lists to multiple years
-    build_years = [2019] + inv_period
-    plant_index_lists = [original_plant_indices] + [
-        hypothetical_plant_indices for i in inv_period
-    ]
-    all_indices = sum(plant_index_lists, [])
-    all_build_years = sum([[b] * len(original_plant_indices) for b in build_years], [])
-    all_overnight_costs = sum([overnight_costs for b in build_years], [])
-    all_gen_fixed_om = sum([gen_fixed_om for b in build_years], [])
+    # Extend these lists to multiple investment years
+    all_indices = indices["existing"] + (
+        indices["expansion"] + indices["storage"]
+    ) * len(inv_period)
+    all_build_years = [const.base_year] * num_existing + sum(
+        [[i] * (num_expansion + num_storage) for i in inv_period], []
+    )
+    all_overnight_costs = [0] * num_existing + expansion_overnight * len(inv_period)
+    all_gen_fixed_om = existing_om + expansion_om * len(inv_period)
 
     # Create a dataframe from the collected lists
     gen_build_costs = pd.DataFrame(
@@ -366,6 +383,14 @@ def build_gen_build_costs(plant, cost_at_min_power, inv_period):
             "gen_fixed_om": all_gen_fixed_om,
         }
     )
+    # Add a relevant storage column, as necessary
+    if num_storage > 0:
+        expansion_energy_cost = ["."] * num_expansion + [
+            const.storage_parameters["overnight_energy_cost"] * num_storage
+        ]
+        gen_build_costs["gen_storage_energy_overnight_cost"] = [
+            "."
+        ] * num_existing + expansion_energy_cost * len(inv_period)
     return gen_build_costs
 
 
