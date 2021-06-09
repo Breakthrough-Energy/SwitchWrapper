@@ -7,6 +7,7 @@ from switchwrapper.helpers import (
     match_variables,
     recover_branch_indices,
     recover_plant_indices,
+    split_plant_existing_expansion,
 )
 
 
@@ -123,7 +124,8 @@ def add_gen_upgrades_to_grid(grid, build_gen, year):
     """
     # Extract indices
     plant_ids, _ = recover_plant_indices(build_gen["gen_id"])
-    num_original_plants = len(grid.plant)
+    existing_plant_ids, expansion_plant_ids = split_plant_existing_expansion(plant_ids)
+    num_original_plants = len(existing_plant_ids)
     new_plant_ids = plant_ids.iloc[num_original_plants:]
     new_plant_id_unmapping = pd.Series(new_plant_ids.index, index=new_plant_ids)
     # Copy data frames from plant inputs

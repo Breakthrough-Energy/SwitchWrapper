@@ -144,6 +144,20 @@ def recover_plant_indices(switch_plant_ids):
     return pd.Series(plant_ids), pd.Series(storage_ids, dtype=str)
 
 
+def split_plant_existing_expansion(plant_ids):
+    """Recover the existing plant indices from Switch outputs which contain both
+    existing and hypothetical indices.
+
+    :param iterable plant_ids: Switch plant indices.
+    :return: (*tuple*) --
+        a list of Switch IDs for existing plants.
+        a list of Switch IDs for expansion plants.
+    """
+    existing_plant_ids = [p for p in plant_ids if re.search(r"g\d+$", p) is not None]
+    expansion_plant_ids = [p for p in plant_ids if re.search(r"g\d+i", p) is not None]
+    return existing_plant_ids, expansion_plant_ids
+
+
 def recover_storage_buses(switch_storage_ids):
     """Recover the storage bus location from Switch storage indices.
 
