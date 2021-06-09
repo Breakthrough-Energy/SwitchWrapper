@@ -23,6 +23,7 @@ financial_parameters = {
 }
 
 storage_parameters = {
+    "efficiency": 1,
     "max_age": 20,  # years
     "max_cycles": 200,  # cycles per year
     "overnight_power_cost": 0,
