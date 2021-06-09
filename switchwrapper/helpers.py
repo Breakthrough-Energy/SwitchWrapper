@@ -144,6 +144,15 @@ def recover_plant_indices(switch_plant_ids):
     return pd.Series(plant_ids), pd.Series(storage_ids, dtype=str)
 
 
+def recover_storage_buses(switch_storage_ids):
+    """Recover the storage bus location from Switch storage indices.
+
+    :param iterable switch_storage_ids: Switch storage indices.
+    :return: (*list*) -- list of integers of storage bus IDs.
+    """
+    return [int(re.search(r"s(\d+)i", s).group(1)) for s in switch_storage_ids]
+
+
 def recover_branch_indices(switch_branch_ids):
     """Recover the branch indices from Switch outputs.
 
