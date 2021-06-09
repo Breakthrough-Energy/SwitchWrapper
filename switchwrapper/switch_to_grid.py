@@ -115,7 +115,8 @@ def add_gen_upgrades_to_grid(grid, build_gen, year):
     """Add generation upgrades to existing Grid. Note: modifies the grid inplace.
 
     :param powersimdata.input.grid.Grid grid: Grid instance.
-    :param pandas.DataFrame build_gen: generation expansion decisions.
+    :param pandas.DataFrame build_gen: generation expansion decisions
+        (including storage).
     :param int year: upgrades year to apply upgrades from.
     """
     # Extract indices
@@ -127,7 +128,8 @@ def add_gen_upgrades_to_grid(grid, build_gen, year):
     new_plants = grid.plant.copy().reset_index()
     new_gencost = grid.gencost["before"].copy().reset_index()
     # Update new generator data frames based on upgrade decisions
-    new_capacity = build_gen.query("year == @year").capacity.reset_index(drop=True)
+    new_capacity = build_gen.query("gen_id in @plant_ids and year == @year")
+    new_capacity = new_capacity.capacity.reset_index(drop=True)
     pmin_ratio = (grid.plant.Pmin / grid.plant.Pmax).reset_index(drop=True)
     capacity_ratio = new_capacity / grid.plant.Pmax.reset_index(drop=True)
     # Replace all inf or NA values with 0
