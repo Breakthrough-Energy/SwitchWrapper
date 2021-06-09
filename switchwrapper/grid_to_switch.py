@@ -328,6 +328,9 @@ def build_generation_projects_info(
     df["gen_store_to_release_ratio"] = "."
     if num_storage > 0:
         num_gens = len(indices["existing"]) + len(indices["expansion"])
+        df["gen_storage_efficiency"] = ["."] * num_gens + [
+            const.storage_parameters["efficiency"]
+        ] * num_storage
         df["gen_storage_max_cycles_per_year"] = ["."] * num_gens + [
             const.storage_parameters["max_cycles"]
         ] * num_storage
