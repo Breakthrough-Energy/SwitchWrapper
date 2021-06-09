@@ -1,5 +1,6 @@
 import copy
 
+import numpy as np
 import pandas as pd
 
 from switchwrapper.helpers import (
@@ -7,6 +8,7 @@ from switchwrapper.helpers import (
     match_variables,
     recover_branch_indices,
     recover_plant_indices,
+    recover_storage_buses,
     split_plant_existing_expansion,
 )
 
@@ -158,6 +160,70 @@ def add_gen_upgrades_to_grid(grid, build_gen, year):
         new_gencost.loc[new_plants.index]
     )
     grid.gencost["after"] = grid.gencost["before"]
+
+
+def add_storage_upgrades_to_grid(grid, build_gen, build_storage_energy, year):
+    """Add storage upgrades to existing Grid. Note: modifies the grid inplace.
+
+    :param powersimdata.input.grid.Grid grid: Grid instance.
+    :param pandas.DataFrame build_gen: generation and storage expansion decisions.
+    :param pandas.DataFrame build_storage_energy: storage energy expansion decisions.
+    :param int year: upgrades year to apply upgrades from.
+    """
+    # Extract indices
+    _, storage_ids = recover_plant_indices(build_gen["gen_id"])
+    new_storage = build_gen.query(
+        "gen_id in @storage_ids and year == @year and capacity > 0"
+    )
+    new_storage_energy = build_storage_energy.query("year == @year")
+    num_storage = len(new_storage)
+    if num_storage == 0:
+        return grid
+    new_indices = list(range(num_storage))
+
+    # Build placeholder dataframes
+    new_storage_gen = pd.DataFrame(0, index=new_indices, columns=grid.plant.columns)
+    new_storage_storagedata = pd.DataFrame(
+        0, index=new_indices, columns=grid.storage["StorageData"].columns
+    )
+    new_storage_gencost = pd.DataFrame(
+        0, index=new_indices, columns=grid.storage["gencost"].columns
+    )
+    # Modify dataframes to include relevant information
+    new_storage_gen.loc[:, "bus_id"] = recover_storage_buses(storage_ids)
+    new_storage_gen.loc[:, "Vg"] = 1  # per-unit voltage
+    new_storage_gen.loc[:, "mBase"] = 100  # MW
+    new_storage_gen.loc[:, "status"] = 1  # on
+    new_storage_gen.loc[:, "Pmax"] = new_storage.capacity.tolist()
+    new_storage_gen.loc[:, "Pmin"] = (-1 * new_storage.capacity).tolist()
+    new_storage_gen.loc[:, "ramp_10"] = new_storage.capacity.tolist()
+    new_storage_gen.loc[:, "ramp_30"] = new_storage.capacity.tolist()
+    new_storage_storagedata.loc[:, "UnitIdx"] = storage_ids.index.tolist()
+    for i in ["InitialStorage", "InitialStorageLowerBound", "InitialStorageUpperBound"]:
+        new_storage_storagedata.loc[:, i] = new_storage_energy.capacity / 2
+    energy_value = grid.model_immutables.storage["defaults"]["energy_value"]
+    new_storage_storagedata.loc[:, "InitialStorageCost"] = energy_value
+    new_storage_storagedata.loc[:, "TerminalStoragePrice"] = energy_value
+    new_storage_storagedata.loc[:, "MaxStorageLevel"] = new_storage_energy.capacity
+    new_storage_storagedata.loc[:, "OutEff"] = 1
+    new_storage_storagedata.loc[:, "InEff"] = 1
+    new_storage_storagedata.loc[:, "rho"] = 1
+    new_storage_storagedata.loc[
+        :, "ExpectedTerminalStorageMax"
+    ] = new_storage_energy.capacity
+    new_storage_gencost.loc[:, "type"] = 1
+    new_storage_gencost.loc[:, "n"] = 2
+    new_storage_gencost.loc[:, "p1"] = -1 * new_storage_gen.loc[:, "Pmax"]
+    new_storage_gencost.loc[:, "p2"] = new_storage_gen.loc[:, "Pmax"]
+    # Append new entries to existing data frames
+    grid.storage["gen"] = grid.storage["gen"].append(new_storage_gen)
+    grid.storage["StorageData"] = grid.storage["StorageData"].append(
+        new_storage_storagedata
+    )
+    grid.storage["gencost"] = grid.storage["gencost"].append(new_storage_gencost)
+    grid.storage["genfuel"] = np.concatenate(
+        [grid.storage["genfuel"], np.array(["ess"] * num_storage)]
+    )
 
 
 def extract_build_decisions(results):
