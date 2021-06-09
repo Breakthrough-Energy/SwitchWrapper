@@ -7,6 +7,7 @@ switch_modules = [
     "switch_model.generators.core.build",
     "switch_model.generators.core.dispatch",
     "switch_model.generators.core.no_commit",
+    "switch_model.generators.extensions.storage",
     "switch_model.energy_sources.fuel_costs.simple",
     "switch_model.transmission.local_td",
     "switch_model.transmission.transport.build",
