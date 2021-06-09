@@ -318,7 +318,7 @@ def build_generation_projects_info(
     df["gen_is_cogen"] = 0
     df["gen_energy_source"] = (
         plant.type.map(const.fuel_mapping).tolist() * 2
-        + const.fuel_mapping["storage"] * num_storage
+        + [const.fuel_mapping["storage"]] * num_storage
     )
     df.loc[df.gen_energy_source.isin(const.non_fuels), "gen_full_load_heat_rate"] = "."
     df["gen_unit_size"] = "."
@@ -327,10 +327,10 @@ def build_generation_projects_info(
     df["gen_storage_efficiency"] = "."
     df["gen_store_to_release_ratio"] = "."
     if num_storage > 0:
-        gen_cycle_limit = ["."] * (len(indices["existing"]) + len(indices["expansion"]))
-        df["gen_storage_max_cycles_per_year"] = (
-            gen_cycle_limit + [const.storage_parameters["max_cycles"]] * num_storage
-        )
+        num_gens = len(indices["existing"]) + len(indices["expansion"])
+        df["gen_storage_max_cycles_per_year"] = ["."] * num_gens + [
+            const.storage_parameters["max_cycles"]
+        ] * num_storage
     df.reset_index(inplace=True)
 
     return df
@@ -386,8 +386,8 @@ def build_gen_build_costs(
     # Add a relevant storage column, as necessary
     if num_storage > 0:
         expansion_energy_cost = ["."] * num_expansion + [
-            const.storage_parameters["overnight_energy_cost"] * num_storage
-        ]
+            const.storage_parameters["overnight_energy_cost"]
+        ] * num_storage
         gen_build_costs["gen_storage_energy_overnight_cost"] = [
             "."
         ] * num_existing + expansion_energy_cost * len(inv_period)
