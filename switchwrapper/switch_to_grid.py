@@ -19,19 +19,20 @@ def construct_grids_from_switch_results(grid, results):
         Grid objects.
     """
     # Extract the upgrade information from the Switch results
-    build_gen, build_tx = extract_build_decisions(results)
+    build_gen, build_tx, build_storage_energy = extract_build_decisions(results)
     # Add this information to the existing grid to create new grids
-    all_grids = create_upgraded_grids(grid, build_gen, build_tx)
+    all_grids = create_upgraded_grids(grid, build_gen, build_tx, build_storage_energy)
 
     return all_grids
 
 
-def create_upgraded_grids(grid, build_gen, build_tx):
+def create_upgraded_grids(grid, build_gen, build_tx, build_storage_energy):
     """Add upgrades to existing Grid.
 
     :param powersimdata.input.grid.Grid grid: Grid instance.
     :param pandas.DataFrame build_gen: generation expansion decisions.
     :param pandas.DataFrame build_tx: transmission expansion decisions.
+    :param pandas.DataFrame build_storage_energy: storage energy expansion decisions.
     :return: (*dict*) -- keys are integers representing the expansion year, values are
         Grid objects.
     """
@@ -44,6 +45,7 @@ def create_upgraded_grids(grid, build_gen, build_tx):
         # Then make additions based on each year's upgrade results
         add_tx_upgrades_to_grid(output_grid, build_tx, year)
         add_gen_upgrades_to_grid(output_grid, build_gen, year)
+        add_storage_upgrades_to_grid(output_grid, build_gen, build_storage_energy, year)
         # Finally, save
         all_grids[year] = output_grid
 
@@ -167,14 +169,23 @@ def extract_build_decisions(results):
         pandas.DataFrame representing the transmission build decisions. Columns are:
             'year', 'tx_id' (Switch indexing), and 'capacity'. There is no meaningful
             index.
+        pandas.DataFrame representing the storage build decisions. Columns are:
+            'year', 's_id' (Switch indexing), and 'capacity'. There is no meaningful
+            index.
     """
     gen_pattern = r"BuildGen\[(?P<gen_id>[a-z0-9]+),(?P<year>[0-9]+)\]"
     tx_pattern = r"BuildTx\[(?P<tx_id>[a-z0-9]+),(?P<year>[0-9]+)\]"
+    storage_pattern = r"BuildStorageEnergy\[(?P<s_id>[a-z0-9]+),(?P<year>[0-9]+)\]"
 
     variables = results.solution._list[0]["Variable"]
     build_gen = match_variables(variables, gen_pattern, ["year", "gen_id"])
     build_gen = build_gen.astype({"year": int})
     build_tx = match_variables(variables, tx_pattern, ["year", "tx_id"])
     build_tx = build_tx.astype({"year": int})
+    build_storage_energy = match_variables(variables, storage_pattern, ["year", "s_id"])
+    if build_storage_energy.shape == (0, 0):
+        # No storage energy variables are present in the results
+        build_storage_energy = pd.DataFrame(columns=["year", "s_id", "capacity"])
+    build_storage_energy = build_storage_energy.astype({"year": int})
 
-    return build_gen, build_tx
+    return build_gen, build_tx, build_storage_energy
