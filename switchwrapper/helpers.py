@@ -172,9 +172,11 @@ def branch_indices_to_bus_tuple(grid):
     acline = pd.Series(
         list(zip(grid.branch["from_bus_id"], grid.branch["to_bus_id"])),
         index=grid.branch.index,
+        dtype="float64",
     )
     dcline = pd.Series(
         list(zip(grid.dcline["from_bus_id"], grid.dcline["to_bus_id"])),
         index=grid.dcline.index,
+        dtype="float64",
     )
     return acline, dcline
