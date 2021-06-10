@@ -3,6 +3,7 @@ import copy
 import pandas as pd
 
 from switchwrapper.helpers import (
+    branch_indices_to_bus_tuple,
     match_variables,
     recover_branch_indices,
     recover_plant_indices,
@@ -56,8 +57,18 @@ def add_tx_upgrades_to_grid(grid, build_tx, year):
     :param pandas.DataFrame build_tx: transmission expansion decisions.
     :param int year: upgrades year to apply upgrades from.
     """
+    # Create mapping between Switch branch indices and Grid branch indices
     ac_branch_ids, dc_branch_ids = recover_branch_indices(build_tx["tx_id"])
     ac_id_unmapping = pd.Series(ac_branch_ids.index, index=ac_branch_ids)
+    sorted_branch_to_from = [
+        tuple(sorted(t))
+        for t in grid.branch[["to_bus_id", "from_bus_id"]].to_numpy().tolist()
+    ]
+    # Calculate total branch capacity per combination of to/from bus ID
+    to_from_ac, _ = branch_indices_to_bus_tuple(grid)
+    to_from_capacity = grid.branch.groupby(["to_bus_id", "from_bus_id"]).rateA.sum()
+    to_from_capacity.index = to_from_capacity.index.map(lambda x: tuple(sorted(x)))
+    to_from_capacity = to_from_capacity.groupby(to_from_capacity.index).sum()
     # Filter to upgrades in each year, and separate transmission by AC or DC
     ac_upgrades = build_tx.query(
         "year == @year and tx_id in @ac_branch_ids and capacity > 0"
@@ -65,15 +76,33 @@ def add_tx_upgrades_to_grid(grid, build_tx, year):
     dc_upgrades = build_tx.query(
         "year == @year and tx_id in @dc_branch_ids and capacity > 0"
     )
-    # Apply AC upgrades (no new branches, scale up rateA and scale down impedance)
+    # Calculate AC upgrades (total path upgrade / total path starting capacity)
     original_index_upgrades = pd.Series(
         ac_upgrades.capacity.to_numpy(),
         index=ac_upgrades.tx_id.map(ac_id_unmapping),
     )
-    ac_upgrade_ratios = 1 + original_index_upgrades / grid.branch.rateA
-    ac_upgrade_ratios.fillna(1, inplace=True)
-    grid.branch.rateA.update(grid.branch.rateA * ac_upgrade_ratios)
-    impedance_updates = grid.branch.x / ac_upgrade_ratios
+    # Ignore upgrades to lines with unlimited original capacity
+    original_index_upgrades = original_index_upgrades.loc[grid.branch.rateA > 0]
+    sorted_upgrade_indices = original_index_upgrades.index.map(
+        lambda x: tuple(sorted(to_from_ac.loc[x]))
+    ).tolist()
+    to_from_ac_upgrades = pd.Series(
+        original_index_upgrades.tolist(),
+        index=sorted_upgrade_indices,
+    )
+    to_from_ac_upgrades = to_from_ac_upgrades.groupby(to_from_ac_upgrades.index).sum()
+    to_from_ac_upgrade_ratios = 1 + to_from_ac_upgrades / to_from_capacity
+    with pd.option_context("mode.use_inf_as_na", True):
+        to_from_ac_upgrade_ratios.fillna(1, inplace=True)
+    ac_branch_upgrade_ratios = pd.Series(
+        to_from_ac_upgrade_ratios.loc[sorted_branch_to_from].tolist(),
+        index=grid.branch.index.tolist(),
+    )
+    # Apply AC upgrades (no new branches, scale up rateA and scale down impedance)
+    grid.branch.rateA.update(grid.branch.rateA * ac_branch_upgrade_ratios)
+    impedance_updates = grid.branch.x / ac_branch_upgrade_ratios
+    # Don't update impedance for lines with unlimited original capacity
+    impedance_updates = impedance_updates.loc[grid.branch.rateA > 0]
     grid.branch.x.update(impedance_updates)
     # Apply DC upgrades (no new lines, add to Pmax and subtract from Pmin)
     dc_upgrades = dc_upgrades.reindex(grid.dcline.index).fillna(0)
