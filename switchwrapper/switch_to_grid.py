@@ -70,7 +70,7 @@ def add_tx_upgrades_to_grid(grid, build_tx, year):
         ac_upgrades.capacity.to_numpy(),
         index=ac_upgrades.tx_id.map(ac_id_unmapping),
     )
-    ac_upgrade_ratios = original_index_upgrades / grid.branch.rateA
+    ac_upgrade_ratios = 1 + original_index_upgrades / grid.branch.rateA
     ac_upgrade_ratios.fillna(1, inplace=True)
     grid.branch.rateA.update(grid.branch.rateA * ac_upgrade_ratios)
     impedance_updates = grid.branch.x / ac_upgrade_ratios
