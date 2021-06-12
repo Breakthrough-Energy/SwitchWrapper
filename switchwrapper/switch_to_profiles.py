@@ -131,8 +131,8 @@ class ExtractTimeseries:
     def get_pg(self):
         """Get timeseries power generation for each plant.
 
-        :return: (*pandas.DataFrame*) -- data frame indexed by timestamps with
-            plant_id as columns.
+        :return: (*dict*) -- keys are investment years, values are data frames
+            indexed by timestamps with plant_id as columns.
         """
         all_pg = self.parsed_data["DispatchGen"].copy()
         all_pg.columns = self.plant_id_mapping.index
@@ -158,8 +158,8 @@ class ExtractTimeseries:
         """Get timeseries power flow for each ac branch, power flow split between
         parallel branches by reactance.
 
-        :return: (*pandas.DataFrame*) -- data frame indexed by timestamps with
-            branch_id as columns.
+        :return: (*dict*) -- keys are investment years, values are data frames
+            indexed by timestamps with branch_id as columns.
         """
         pf = dict()
         for year, grid in self.grids.items():
@@ -172,4 +172,29 @@ class ExtractTimeseries:
                 branch.index.map(self.ac_branch_id_mapping)
             ].values
             pf[year] *= branch["x"] / branch["total_x"]
+            pf[year].index = pd.Index(pf[year].index.map(pd.Timestamp), name="UTC")
         return pf
+
+    def get_dcline_pf(self):
+        """Get timeseries power flow for each dcline, power flow split between
+        parallel lines by capacity.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with dcline_id as columns.
+        """
+        dcline_pf = dict()
+        for year, grid in self.grids.items():
+            dcline_pf[year] = self.net_tx[
+                grid.dcline.index.map(self.dc_branch_id_mapping)
+            ]
+            dcline_pf[year].columns = grid.dcline.index
+            dcline = grid.dcline.copy()
+            bus_tuple_pmax = dcline.groupby(["from_bus_id", "to_bus_id"]).sum()["Pmax"]
+            dcline["total_pmax"] = bus_tuple_pmax.loc[
+                dcline.index.map(self.dc_branch_id_mapping)
+            ].values
+            dcline_pf[year] *= dcline["Pmax"] / dcline["total_pmax"]
+            dcline_pf[year].index = pd.Index(
+                dcline_pf[year].index.map(pd.Timestamp), name="UTC"
+            )
+        return dcline_pf
