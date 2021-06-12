@@ -143,3 +143,13 @@ class ExtractTimeseries:
             ]
             pg[year].index = pd.Index(pg[year].index.map(pd.Timestamp), name="UTC")
         return pg
+
+    def _calculate_net_pf(self):
+        """Calculate net power flow between every bus tuple."""
+        original_tx = self.parsed_data["DispatchTx"].copy()
+        original_tx.columns = self.parsed_data["DispatchTx"].columns.map(
+            lambda x: tuple(map(int, x[1].split(",")))
+        )
+        mirror_tx = original_tx.copy()
+        mirror_tx.columns = mirror_tx.columns.map(lambda x: (x[1], x[0]))
+        self.net_tx = original_tx - mirror_tx
