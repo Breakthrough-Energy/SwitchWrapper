@@ -127,3 +127,19 @@ class ExtractTimeseries:
         data = self.results.solution._list[0].Variable
         variables_to_parse = ["DispatchGen", "DispatchTx"]
         self.parsed_data = parse_timepoints(data, variables_to_parse, self.mapping)
+
+    def get_pg(self):
+        """Get timeseries power generation for each plant.
+
+        :return: (*pandas.DataFrame*) -- data frame indexed by timestamps with
+            plant_id as columns.
+        """
+        all_pg = self.parsed_data["DispatchGen"].copy()
+        all_pg.columns = self.plant_id_mapping.index
+        pg = dict()
+        for year, grid in self.grids.items():
+            pg[year] = all_pg.loc[
+                self.timestamp_to_investment_year == year, grid.plant.index
+            ]
+            pg[year].index = pd.Index(pg[year].index.map(pd.Timestamp), name="UTC")
+        return pg
