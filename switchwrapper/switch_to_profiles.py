@@ -153,3 +153,23 @@ class ExtractTimeseries:
         mirror_tx = original_tx.copy()
         mirror_tx.columns = mirror_tx.columns.map(lambda x: (x[1], x[0]))
         self.net_tx = original_tx - mirror_tx
+
+    def get_pf(self):
+        """Get timeseries power flow for each ac branch, power flow split between
+        parallel branches by reactance.
+
+        :return: (*pandas.DataFrame*) -- data frame indexed by timestamps with
+            branch_id as columns.
+        """
+        pf = dict()
+        for year, grid in self.grids.items():
+            pf[year] = self.net_tx[grid.branch.index.map(self.ac_branch_id_mapping)]
+            pf[year].columns = grid.branch.index
+            branch = grid.branch.copy()
+            branch["x"] = branch["x"].apply(lambda x: 1 / x)
+            bus_tuple_x = branch.groupby(["from_bus_id", "to_bus_id"]).sum()["x"]
+            branch["total_x"] = bus_tuple_x.loc[
+                branch.index.map(self.ac_branch_id_mapping)
+            ].values
+            pf[year] *= branch["x"] / branch["total_x"]
+        return pf
