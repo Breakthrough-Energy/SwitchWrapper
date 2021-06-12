@@ -1,7 +1,14 @@
+import pickle
 import pandas as pd
 
 from switchwrapper import const  # noqa: F401
-from switchwrapper.helpers import recover_plant_indices
+from switchwrapper.helpers import (
+    branch_indices_to_bus_tuple,
+    load_mapping,
+    parse_timepoints,
+    recover_plant_indices,
+)
+from switchwrapper.switch_to_grid import construct_grids_from_switch_results
 
 
 def reconstruct_input_profiles(
@@ -74,3 +81,49 @@ def reconstruct_input_profiles(
             ]
 
     return profiles
+
+
+class ExtractTimeseries:
+    def __init__(self, results_file, mapping_file, timepoints_file, grid):
+        """Extract timeseries results from Switch results.
+
+        :param str results_file: file path of Switch results pickle file.
+        :param str mapping_file: file path of mapping.csv.
+        :param str timepoints_file: file path of timepoints.csv.
+        :param powersimdata.input.grid.Grid grid: grid instance.
+        """
+        self.mapping = load_mapping(mapping_file)
+        self._timestamp_to_investment_year(timepoints_file)
+        self._get_parsed_data(results_file)
+        self.plant_id_mapping, _ = recover_plant_indices(
+            self.parsed_data["DispatchGen"].columns.map(lambda x: x[1])
+        )
+        self._calculate_net_pf()
+        (
+            self.ac_branch_id_mapping,
+            self.dc_branch_id_mapping,
+        ) = branch_indices_to_bus_tuple(grid)
+        self.grids = construct_grids_from_switch_results(grid, self.results)
+
+    def _timestamp_to_investment_year(self, timepoints_file):
+        """Get investment year for each timestamp via timepoints.
+
+        :param str timepoints_file: file path of timepoints.csv.
+        """
+        timepoints = pd.read_csv(timepoints_file)
+        timepoints.set_index("timepoint_id", inplace=True)
+        self.timestamp_to_investment_year = pd.Series(
+            self.mapping["timepoint"].map(timepoints["ts_period"]),
+            index=self.mapping.index,
+        )
+
+    def _get_parsed_data(self, results_file):
+        """Parse Switch results to get raw timeseries of pg and pf.
+
+        :param str results_file: file path of Switch results pickle file.
+        """
+        with open(results_file, "rb") as f:
+            self.results = pickle.load(f)
+        data = self.results.solution._list[0].Variable
+        variables_to_parse = ["DispatchGen", "DispatchTx"]
+        self.parsed_data = parse_timepoints(data, variables_to_parse, self.mapping)
