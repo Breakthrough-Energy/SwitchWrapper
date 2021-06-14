@@ -22,6 +22,10 @@ def reconstruct_input_profiles(
         (no meaningful index).
     :param pandas.Series timestamps_to_timepoints: index is full-dimension timestamps,
         values are the timepoint that each timestamp was mapped to (int).
+    :return: (*dict*) -- keys are: {'demand', 'hydro', 'solar', 'wind'}, values are
+        pandas DataFrames, indexed as in ``timestamps_to_timepoints``, with integer
+        columns representing plant IDs (for hydro, solar, wind) or zone IDs
+        (for demand). The data frame values are floats, and the units are MW.
     """
     profiles = {}  # Container for all resulting profiles
 
