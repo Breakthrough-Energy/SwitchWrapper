@@ -165,13 +165,12 @@ class ExtractTimeseries:
         for year, grid in self.grids.items():
             pf[year] = self.net_tx[grid.branch.index.map(self.ac_branch_id_mapping)]
             pf[year].columns = grid.branch.index
-            branch = grid.branch.copy()
-            branch["x"] = branch["x"].apply(lambda x: 1 / x)
-            bus_tuple_x = branch.groupby(["from_bus_id", "to_bus_id"]).sum()["x"]
-            branch["total_x"] = bus_tuple_x.loc[
+            branch = grid.branch.assign(b=grid.branch.x.apply(lambda x: 1 / x))
+            bus_tuple_b = branch.groupby(["from_bus_id", "to_bus_id"]).sum()["b"]
+            branch["total_b"] = bus_tuple_b.loc[
                 branch.index.map(self.ac_branch_id_mapping)
             ].values
-            pf[year] *= branch["x"] / branch["total_x"]
+            pf[year] *= branch["b"] / branch["total_b"]
             pf[year].index = pd.Index(pf[year].index.map(pd.Timestamp), name="UTC")
         return pf
 
@@ -188,11 +187,14 @@ class ExtractTimeseries:
                 grid.dcline.index.map(self.dc_branch_id_mapping)
             ]
             dcline_pf[year].columns = grid.dcline.index
-            dcline = grid.dcline.copy()
-            bus_tuple_pmax = dcline.groupby(["from_bus_id", "to_bus_id"]).sum()["Pmax"]
-            dcline["total_pmax"] = bus_tuple_pmax.loc[
-                dcline.index.map(self.dc_branch_id_mapping)
-            ].values
+            bus_tuple_pmax = grid.dcline.groupby(["from_bus_id", "to_bus_id"]).sum()[
+                "Pmax"
+            ]
+            dcline = grid.dcline.assign(
+                total_pmax=bus_tuple_pmax.loc[
+                    grid.dcline.index.map(self.dc_branch_id_mapping)
+                ].values
+            )
             dcline_pf[year] *= dcline["Pmax"] / dcline["total_pmax"]
             dcline_pf[year].index = pd.Index(
                 dcline_pf[year].index.map(pd.Timestamp), name="UTC"
