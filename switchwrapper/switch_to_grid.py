@@ -89,6 +89,7 @@ def add_tx_upgrades_to_grid(grid, build_tx, year):
     to_from_ac_upgrades = pd.Series(
         original_index_upgrades.tolist(),
         index=sorted_upgrade_indices,
+        dtype=float,
     )
     to_from_ac_upgrades = to_from_ac_upgrades.groupby(to_from_ac_upgrades.index).sum()
     to_from_ac_upgrade_ratios = 1 + to_from_ac_upgrades / to_from_capacity
