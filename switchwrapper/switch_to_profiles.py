@@ -4,7 +4,7 @@ import pandas as pd
 from switchwrapper import const  # noqa: F401
 from switchwrapper.helpers import (
     branch_indices_to_bus_tuple,
-    load_mapping,
+    load_timestamps_to_timepoints,
     parse_timepoints,
     recover_plant_indices,
 )
@@ -84,15 +84,19 @@ def reconstruct_input_profiles(
 
 
 class ExtractTimeseries:
-    def __init__(self, results_file, mapping_file, timepoints_file, grid):
+    def __init__(
+        self, results_file, timestamps_to_timepoints_file, timepoints_file, grid
+    ):
         """Extract timeseries results from Switch results.
 
         :param str results_file: file path of Switch results pickle file.
-        :param str mapping_file: file path of mapping.csv.
+        :param str timestamps_to_timepoints_file: file path of mapping.csv.
         :param str timepoints_file: file path of timepoints.csv.
         :param powersimdata.input.grid.Grid grid: grid instance.
         """
-        self.mapping = load_mapping(mapping_file)
+        self.timestamps_to_timepoints = load_timestamps_to_timepoints(
+            timestamps_to_timepoints_file
+        )
         self._timestamp_to_investment_year(timepoints_file)
         self._get_parsed_data(results_file)
         self.plant_id_mapping, _ = recover_plant_indices(
@@ -113,8 +117,8 @@ class ExtractTimeseries:
         timepoints = pd.read_csv(timepoints_file)
         timepoints.set_index("timepoint_id", inplace=True)
         self.timestamp_to_investment_year = pd.Series(
-            self.mapping["timepoint"].map(timepoints["ts_period"]),
-            index=self.mapping.index,
+            self.timestamps_to_timepoints["timepoint"].map(timepoints["ts_period"]),
+            index=self.timestamps_to_timepoints.index,
         )
 
     def _get_parsed_data(self, results_file):
@@ -126,7 +130,9 @@ class ExtractTimeseries:
             self.results = pickle.load(f)
         data = self.results.solution._list[0].Variable
         variables_to_parse = ["DispatchGen", "DispatchTx"]
-        self.parsed_data = parse_timepoints(data, variables_to_parse, self.mapping)
+        self.parsed_data = parse_timepoints(
+            data, variables_to_parse, self.timestamps_to_timepoints
+        )
 
     def get_pg(self):
         """Get timeseries power generation for each plant.

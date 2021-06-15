@@ -44,17 +44,16 @@ def make_plant_indices(plant_ids, storage_candidates=None):
     return indices
 
 
-def load_mapping(filename):
-    """Takes a file path to a timepoint mapping csv and converts
-        the given mapping into a format expected by the conversion function
+def load_timestamps_to_timepoints(filename):
+    """Read timestamps_to_timepoints csv file from the given file path using pandas.
 
-    :param str filename: path to the mapping csv
+    :param str filename: path to the timestamps_to_timepoints csv.
     :return: (*pandas.DataFrame*) -- a dataframe with of timepoints to a list containing
-        all the component time stamps
+        all the component timestamps.
     """
-    mapping = pd.read_csv(filename, index_col=0)
+    timestamps_to_timepoints = pd.read_csv(filename, index_col=0)
 
-    return mapping
+    return timestamps_to_timepoints
 
 
 def make_branch_indices(branch_ids, dc=False):
@@ -67,7 +66,7 @@ def make_branch_indices(branch_ids, dc=False):
     return [f"{i}dc" if dc else f"{i}ac" for i in branch_ids]
 
 
-def parse_timepoints(var_dict, variables, mapping):
+def parse_timepoints(var_dict, variables, timestamps_to_timepoints):
     """Takes the solution variable dictionary contained in the output pickle
     file of `switch` and un-maps the temporal reduction timepoints back into
     a timestamp-indexed dataframe.
@@ -77,15 +76,15 @@ def parse_timepoints(var_dict, variables, mapping):
         are a dictionary where Value is the datapoint for that combination of
         variable name and parameters.
     :param list variables: a list of timeseries variable strings to parse out
-    :param dict mapping: a dictionary of timepoints to a list containing
-        all the component time stamps
+    :param pandas.DataFrame timestamps_to_timepoints: data frame indexed by
+        timestamps with a column of timepoints for each timestamp.
     :return (*dict*): a dictionary where the keys are the variable name strings
         and the values are pandas dataframes. The index of these dataframes
-        are the timestamps contained in the mapping dictionary values.
+        are the timestamps contained in the timestamps_to_timepoints data frame.
         The columns of these dataframes are a comma-separated string of the
         parameters embedded in the key of the original input dictionary with
         the timepoint removed and preserved order otherwise. If no variables
-        are found in the input dictionary, the value will be None
+        are found in the input dictionary, the value will be None.
 
     """
     # Initialize final dictionary to return
@@ -106,10 +105,12 @@ def parse_timepoints(var_dict, variables, mapping):
 
         # Unstack such that the timepoints are the indices
         df = df.set_index(["timepoint", "params"]).unstack()
-        # Cast timepoints as ints to match mapping
+        # Cast timepoints as ints to match timestamps_to_timepoints
         df.index = df.index.astype(int)
         # Expand rows to all timestamps
-        df = df.loc[mapping["timepoint"]].set_index(mapping.index)
+        df = df.loc[timestamps_to_timepoints["timepoint"]].set_index(
+            timestamps_to_timepoints.index
+        )
 
         parsed_data[key] = df
 
