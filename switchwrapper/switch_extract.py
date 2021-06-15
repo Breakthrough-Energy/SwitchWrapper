@@ -12,7 +12,7 @@ from switchwrapper.helpers import (
 from switchwrapper.switch_to_grid import construct_grids_from_switch_results
 
 
-class ExtractTimeseries:
+class SwitchExtract:
     def __init__(
         self,
         results_file,
