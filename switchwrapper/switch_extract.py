@@ -1,4 +1,5 @@
 import pickle
+from collections import defaultdict
 
 import pandas as pd
 
@@ -27,10 +28,15 @@ class SwitchExtract:
         :param str results_file: file path of Switch results pickle file.
         :param str timestamps_to_timepoints_file: file path of mapping.csv.
         :param str timepoints_file: file path of timepoints.csv.
-        :param str loads_file: file path of loads.csv.
+        :param str loads_file: file path of loads.csv, the columns of the loaded demand
+            data frame are: 'LOAD_ZONE', 'TIMEPOINT', and 'zone_demand_mw' (no
+            meaningful index).
         :param str variable_capacity_factors_file: file path of
-            variable_capacity_factors.csv.
-        :param powersimdata.input.grid.Grid grid: grid instance.
+            variable_capacity_factors.csv, the columns of the loaded hydro/wind/solar
+            data frame are: 'GENERATION_PROJECT', 'timepoint',
+            and 'gen_max_capacity_factor' (no meaningful index).
+        :param powersimdata.input.grid.Grid grid: grid instance, the input Grid that
+            Switch expanded upon.
         """
         self.timestamps_to_timepoints = load_timestamps_to_timepoints(
             timestamps_to_timepoints_file
@@ -165,9 +171,9 @@ class SwitchExtract:
         ]
         full_time_zone_loads.index = self.timestamps_to_timepoints.index
         # Demand is the same for all years (at least for now)
-        self.input_profiles = {
-            "demand": {year: full_time_zone_loads} for year in self.grids.keys()
-        }
+        self.input_profiles = defaultdict(dict)
+        for year in self.grids:
+            self.input_profiles["demand"][year] = full_time_zone_loads
 
         # Then profiles
         id_unmapping = pd.Series(
@@ -202,11 +208,9 @@ class SwitchExtract:
             }
             for r in ["hydro", "solar", "wind"]:
                 matching = resource_types[r]  # noqa: F841
-                self.input_profiles[r] = {
-                    year: unnormalized_profiles[
-                        grid.plant.query("type in @matching").index
-                    ]
-                }
+                self.input_profiles[r][year] = unnormalized_profiles[
+                    grid.plant.query("type in @matching").index
+                ]
 
     def get_demand(self):
         """Get time series demand input profiles for each investment year.
