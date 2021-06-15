@@ -22,7 +22,7 @@ class ExtractTimeseries:
         variable_capacity_factors_file,
         grid,
     ):
-        """Extract timeseries results from Switch results.
+        """Extract time series results from Switch results.
 
         :param str results_file: file path of Switch results pickle file.
         :param str timestamps_to_timepoints_file: file path of mapping.csv.
@@ -64,7 +64,7 @@ class ExtractTimeseries:
         )
 
     def _get_parsed_data(self, results_file):
-        """Parse Switch results to get raw timeseries of pg and pf.
+        """Parse Switch results to get raw time series of pg and pf.
 
         :param str results_file: file path of Switch results pickle file.
         """
@@ -77,7 +77,7 @@ class ExtractTimeseries:
         )
 
     def get_pg(self):
-        """Get timeseries power generation for each plant.
+        """Get time series power generation for each plant.
 
         :return: (*dict*) -- keys are investment years, values are data frames
             indexed by timestamps with plant_id as columns.
@@ -103,7 +103,7 @@ class ExtractTimeseries:
         self.net_tx = original_tx - mirror_tx
 
     def get_pf(self):
-        """Get timeseries power flow for each ac branch, power flow split between
+        """Get time series power flow for each ac branch, power flow split between
         parallel branches by reactance.
 
         :return: (*dict*) -- keys are investment years, values are data frames
@@ -123,7 +123,7 @@ class ExtractTimeseries:
         return pf
 
     def get_dcline_pf(self):
-        """Get timeseries power flow for each dcline, power flow split between
+        """Get time series power flow for each dcline, power flow split between
         parallel lines by capacity.
 
         :return: (*dict*) -- keys are investment years, values are data frames indexed
@@ -166,7 +166,7 @@ class ExtractTimeseries:
         full_time_zone_loads.index = self.timestamps_to_timepoints.index
         # Demand is the same for all years (at least for now)
         self.input_profiles = {
-            year: {"demand": full_time_zone_loads} for year in self.grids.keys()
+            "demand": {year: full_time_zone_loads} for year in self.grids.keys()
         }
 
         # Then profiles
@@ -202,6 +202,40 @@ class ExtractTimeseries:
             }
             for r in ["hydro", "solar", "wind"]:
                 matching = resource_types[r]  # noqa: F841
-                self.input_profiles[year][r] = unnormalized_profiles[
-                    grid.plant.query("type in @matching").index
-                ]
+                self.input_profiles[r] = {
+                    year: unnormalized_profiles[
+                        grid.plant.query("type in @matching").index
+                    ]
+                }
+
+    def get_demand(self):
+        """Get time series demand input profiles for each investment year.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with zone_id as columns.
+        """
+        return self.input_profiles["demand"]
+
+    def get_hydro(self):
+        """Get time series hydro input profiles for each investment year.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with plant_id as columns.
+        """
+        return self.input_profiles["hydro"]
+
+    def get_wind(self):
+        """Get time series wind input profiles for each investment year.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with plant_id as columns.
+        """
+        return self.input_profiles["wind"]
+
+    def get_solar(self):
+        """Get time series solar input profiles for each investment year.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with plant_id as columns.
+        """
+        return self.input_profiles["solar"]
