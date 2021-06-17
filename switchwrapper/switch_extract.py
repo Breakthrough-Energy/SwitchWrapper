@@ -81,7 +81,7 @@ class SwitchExtract:
         data = self.results.solution._list[0].Variable
         variables_to_parse = ["DispatchGen", "DispatchTx"]
         self.parsed_data = parse_timepoints(
-            data, variables_to_parse, self.timestamps_to_timepoints
+            data, variables_to_parse, self.timestamps_to_timepoints, "dispatch"
         )
 
     def get_pg(self):
@@ -91,6 +91,9 @@ class SwitchExtract:
             indexed by timestamps with plant_id as columns.
         """
         all_pg = self.parsed_data["DispatchGen"].copy()
+        # Filter the MultiIndex columns to just the plant IDs (drop storage)
+        all_pg = all_pg[[("dispatch", s) for s in self.plant_id_mapping]]
+        # Rename to PowerSimData plant indexing
         all_pg.columns = self.plant_id_mapping.index
         pg = dict()
         for year, grid in self.grids.items():

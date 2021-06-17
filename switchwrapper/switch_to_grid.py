@@ -1,5 +1,6 @@
 import copy
 
+import numpy as np
 import pandas as pd
 
 from switchwrapper.helpers import (
@@ -7,6 +8,8 @@ from switchwrapper.helpers import (
     match_variables,
     recover_branch_indices,
     recover_plant_indices,
+    recover_storage_buses,
+    split_plant_existing_expansion,
 )
 
 
@@ -19,19 +22,20 @@ def construct_grids_from_switch_results(grid, results):
         Grid objects.
     """
     # Extract the upgrade information from the Switch results
-    build_gen, build_tx = extract_build_decisions(results)
+    build_gen, build_tx, build_storage_energy = extract_build_decisions(results)
     # Add this information to the existing grid to create new grids
-    all_grids = create_upgraded_grids(grid, build_gen, build_tx)
+    all_grids = create_upgraded_grids(grid, build_gen, build_tx, build_storage_energy)
 
     return all_grids
 
 
-def create_upgraded_grids(grid, build_gen, build_tx):
+def create_upgraded_grids(grid, build_gen, build_tx, build_storage_energy):
     """Add upgrades to existing Grid.
 
     :param powersimdata.input.grid.Grid grid: Grid instance.
     :param pandas.DataFrame build_gen: generation expansion decisions.
     :param pandas.DataFrame build_tx: transmission expansion decisions.
+    :param pandas.DataFrame build_storage_energy: storage energy expansion decisions.
     :return: (*dict*) -- keys are integers representing the expansion year, values are
         Grid objects.
     """
@@ -44,6 +48,7 @@ def create_upgraded_grids(grid, build_gen, build_tx):
         # Then make additions based on each year's upgrade results
         add_tx_upgrades_to_grid(output_grid, build_tx, year)
         add_gen_upgrades_to_grid(output_grid, build_gen, year)
+        add_storage_upgrades_to_grid(output_grid, build_gen, build_storage_energy, year)
         # Finally, save
         all_grids[year] = output_grid
 
@@ -115,19 +120,22 @@ def add_gen_upgrades_to_grid(grid, build_gen, year):
     """Add generation upgrades to existing Grid. Note: modifies the grid inplace.
 
     :param powersimdata.input.grid.Grid grid: Grid instance.
-    :param pandas.DataFrame build_gen: generation expansion decisions.
+    :param pandas.DataFrame build_gen: generation expansion decisions
+        (including storage).
     :param int year: upgrades year to apply upgrades from.
     """
     # Extract indices
     plant_ids, _ = recover_plant_indices(build_gen["gen_id"])
-    num_original_plants = len(grid.plant)
+    existing_plant_ids, expansion_plant_ids = split_plant_existing_expansion(plant_ids)
+    num_original_plants = len(existing_plant_ids)
     new_plant_ids = plant_ids.iloc[num_original_plants:]
     new_plant_id_unmapping = pd.Series(new_plant_ids.index, index=new_plant_ids)
     # Copy data frames from plant inputs
     new_plants = grid.plant.copy().reset_index()
     new_gencost = grid.gencost["before"].copy().reset_index()
     # Update new generator data frames based on upgrade decisions
-    new_capacity = build_gen.query("year == @year").capacity.reset_index(drop=True)
+    new_capacity = build_gen.query("gen_id in @plant_ids and year == @year")
+    new_capacity = new_capacity.capacity.reset_index(drop=True)
     pmin_ratio = (grid.plant.Pmin / grid.plant.Pmax).reset_index(drop=True)
     capacity_ratio = new_capacity / grid.plant.Pmax.reset_index(drop=True)
     # Replace all inf or NA values with 0
@@ -154,6 +162,70 @@ def add_gen_upgrades_to_grid(grid, build_gen, year):
     grid.gencost["after"] = grid.gencost["before"]
 
 
+def add_storage_upgrades_to_grid(grid, build_gen, build_storage_energy, year):
+    """Add storage upgrades to existing Grid. Note: modifies the grid inplace.
+
+    :param powersimdata.input.grid.Grid grid: Grid instance.
+    :param pandas.DataFrame build_gen: generation and storage expansion decisions.
+    :param pandas.DataFrame build_storage_energy: storage energy expansion decisions.
+    :param int year: upgrades year to apply upgrades from.
+    """
+    # Extract indices
+    _, storage_ids = recover_plant_indices(build_gen["gen_id"])
+    new_storage = build_gen.query(
+        "gen_id in @storage_ids and year == @year and capacity > 0"
+    )
+    new_storage_energy = build_storage_energy.query("year == @year")
+    num_storage = len(new_storage)
+    if num_storage == 0:
+        return grid
+    new_indices = list(range(num_storage))
+
+    # Build placeholder dataframes
+    new_storage_gen = pd.DataFrame(0, index=new_indices, columns=grid.plant.columns)
+    new_storage_storagedata = pd.DataFrame(
+        0, index=new_indices, columns=grid.storage["StorageData"].columns
+    )
+    new_storage_gencost = pd.DataFrame(
+        0, index=new_indices, columns=grid.storage["gencost"].columns
+    )
+    # Modify dataframes to include relevant information
+    new_storage_gen.loc[:, "bus_id"] = recover_storage_buses(storage_ids)
+    new_storage_gen.loc[:, "Vg"] = 1  # per-unit voltage
+    new_storage_gen.loc[:, "mBase"] = 100  # MW
+    new_storage_gen.loc[:, "status"] = 1  # on
+    new_storage_gen.loc[:, "Pmax"] = new_storage.capacity.tolist()
+    new_storage_gen.loc[:, "Pmin"] = (-1 * new_storage.capacity).tolist()
+    new_storage_gen.loc[:, "ramp_10"] = new_storage.capacity.tolist()
+    new_storage_gen.loc[:, "ramp_30"] = new_storage.capacity.tolist()
+    new_storage_storagedata.loc[:, "UnitIdx"] = storage_ids.index.tolist()
+    for i in ["InitialStorage", "InitialStorageLowerBound", "InitialStorageUpperBound"]:
+        new_storage_storagedata.loc[:, i] = new_storage_energy.capacity / 2
+    energy_value = grid.model_immutables.storage["defaults"]["energy_value"]
+    new_storage_storagedata.loc[:, "InitialStorageCost"] = energy_value
+    new_storage_storagedata.loc[:, "TerminalStoragePrice"] = energy_value
+    new_storage_storagedata.loc[:, "MaxStorageLevel"] = new_storage_energy.capacity
+    new_storage_storagedata.loc[:, "OutEff"] = 1
+    new_storage_storagedata.loc[:, "InEff"] = 1
+    new_storage_storagedata.loc[:, "rho"] = 1
+    new_storage_storagedata.loc[
+        :, "ExpectedTerminalStorageMax"
+    ] = new_storage_energy.capacity
+    new_storage_gencost.loc[:, "type"] = 1
+    new_storage_gencost.loc[:, "n"] = 2
+    new_storage_gencost.loc[:, "p1"] = -1 * new_storage_gen.loc[:, "Pmax"]
+    new_storage_gencost.loc[:, "p2"] = new_storage_gen.loc[:, "Pmax"]
+    # Append new entries to existing data frames
+    grid.storage["gen"] = grid.storage["gen"].append(new_storage_gen)
+    grid.storage["StorageData"] = grid.storage["StorageData"].append(
+        new_storage_storagedata
+    )
+    grid.storage["gencost"] = grid.storage["gencost"].append(new_storage_gencost)
+    grid.storage["genfuel"] = np.concatenate(
+        [grid.storage["genfuel"], np.array(["ess"] * num_storage)]
+    )
+
+
 def extract_build_decisions(results):
     """Parse the results of the decision variables within Switch results.
 
@@ -165,14 +237,23 @@ def extract_build_decisions(results):
         pandas.DataFrame representing the transmission build decisions. Columns are:
             'year', 'tx_id' (Switch indexing), and 'capacity'. There is no meaningful
             index.
+        pandas.DataFrame representing the storage build decisions. Columns are:
+            'year', 's_id' (Switch indexing), and 'capacity'. There is no meaningful
+            index.
     """
     gen_pattern = r"BuildGen\[(?P<gen_id>[a-z0-9]+),(?P<year>[0-9]+)\]"
     tx_pattern = r"BuildTx\[(?P<tx_id>[a-z0-9]+),(?P<year>[0-9]+)\]"
+    storage_pattern = r"BuildStorageEnergy\[(?P<s_id>[a-z0-9]+),(?P<year>[0-9]+)\]"
 
     variables = results.solution._list[0]["Variable"]
     build_gen = match_variables(variables, gen_pattern, ["year", "gen_id"])
     build_gen = build_gen.astype({"year": int})
     build_tx = match_variables(variables, tx_pattern, ["year", "tx_id"])
     build_tx = build_tx.astype({"year": int})
+    build_storage_energy = match_variables(variables, storage_pattern, ["year", "s_id"])
+    if build_storage_energy.shape == (0, 0):
+        # No storage energy variables are present in the results
+        build_storage_energy = pd.DataFrame(columns=["year", "s_id", "capacity"])
+    build_storage_energy = build_storage_energy.astype({"year": int})
 
-    return build_gen, build_tx
+    return build_gen, build_tx, build_storage_energy
