@@ -3,7 +3,7 @@ import re
 import pandas as pd
 
 
-def match_variables(variables, pattern, columns):
+def match_variables(variables, pattern, columns, value_name="capacity"):
     """Search through dictionary of variables, extracting data frame of values.
 
     :param dict variables: dictionary, keys are strings, values are dictionaries
@@ -17,7 +17,7 @@ def match_variables(variables, pattern, columns):
         [
             {
                 **{name: m.group(name) for name in columns},
-                "capacity": variables[m.group(0)]["Value"],
+                value_name: variables[m.group(0)]["Value"],
             }
             for m in [
                 prog.match(v) for v in variables.keys() if prog.match(v) is not None
@@ -66,7 +66,7 @@ def make_branch_indices(branch_ids, dc=False):
     return [f"{i}dc" if dc else f"{i}ac" for i in branch_ids]
 
 
-def parse_timepoints(var_dict, variables, timestamps_to_timepoints):
+def parse_timepoints(var_dict, variables, timestamps_to_timepoints, value_name):
     """Takes the solution variable dictionary contained in the output pickle
     file of `switch` and un-maps the temporal reduction timepoints back into
     a timestamp-indexed dataframe.
@@ -78,6 +78,7 @@ def parse_timepoints(var_dict, variables, timestamps_to_timepoints):
     :param list variables: a list of timeseries variable strings to parse out
     :param pandas.DataFrame timestamps_to_timepoints: data frame indexed by
         timestamps with a column of timepoints for each timestamp.
+    :param str value_name: the name to assign to the variable values column.
     :return (*dict*): a dictionary where the keys are the variable name strings
         and the values are pandas dataframes. The index of these dataframes
         are the timestamps contained in the timestamps_to_timepoints data frame.
@@ -93,9 +94,10 @@ def parse_timepoints(var_dict, variables, timestamps_to_timepoints):
     for key in variables:
         # Parse out a dataframe for each variable
         df = match_variables(
-            var_dict,
-            key + r"\[(?P<params>.*),(?P<timepoint>.*?)\]",
-            ["params", "timepoint"],
+            variables=var_dict,
+            pattern=(key + r"\[(?P<params>.*),(?P<timepoint>.*?)\]"),
+            columns=["params", "timepoint"],
+            value_name=value_name,
         )
 
         # If no such variable was found, set dataframe to None
