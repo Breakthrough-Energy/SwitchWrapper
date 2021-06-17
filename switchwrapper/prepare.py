@@ -14,6 +14,7 @@ def prepare_inputs(
     timepoints,
     timestamp_to_timepoints,
     switch_files_root=None,
+    storage_candidate_buses=None,
 ):
     """Prepare all grid and profile data into a format expected by Switch.
 
@@ -29,25 +30,47 @@ def prepare_inputs(
     :param pandas.Series timestamp_to_timepoints: timepoints (values) of each timestamp
         (index).
     :param str switch_files_root: the location to save all Switch files.
+    :param set storage_candidate_buses: buses at which to enable storage expansion.
     """
     # Validate the input data
     _check_timepoints(timepoints)
 
     # Create the 'inputs' folder, if it doesn't already exist
     switch_files_root = os.getgwd() if switch_files_root is None else switch_files_root
+    # Folder for Switch inputs
     inputs_folder = os.path.join(switch_files_root, "inputs")
     os.makedirs(inputs_folder, exist_ok=True)
+    # Folder for storing SwitchWrapper inputs, for use in extraction of results
+    switchwrapper_inputs_folder = os.path.join(
+        switch_files_root, "switchwrapper_inputs"
+    )
+    os.makedirs(switchwrapper_inputs_folder, exist_ok=True)
 
-    grid_to_switch(grid, inputs_folder)
+    grid_to_switch(grid, inputs_folder, storage_candidate_buses)
     profiles_to_switch(
         grid, profiles, timepoints, timestamp_to_timepoints, inputs_folder
     )
     write_version_file(inputs_folder)
     write_modules(switch_files_root)
 
-    # Save a copy of the grid object for use in output processing
-    with open(os.path.join(inputs_folder, "grid.pkl"), "wb") as f:
+    # Save input files required for output processing
+    # Input Grid object
+    with open(os.path.join(switchwrapper_inputs_folder, "grid.pkl"), "wb") as f:
         pickle.dump(grid, f)
+    # Timepoints information
+    timepoints.to_csv(os.path.join(switchwrapper_inputs_folder, "timepoints.csv"))
+    # Timestamps to timepoints mapping information
+    timestamp_to_timepoints.to_csv(
+        os.path.join(switchwrapper_inputs_folder, "timestamp_to_timepoints.csv")
+    )
+    # Storage candidate buses
+    if storage_candidate_buses is not None:
+        bus_list_path = os.path.join(
+            switchwrapper_inputs_folder, "storage_candidate_buses.txt"
+        )
+        with open(bus_list_path, "w") as f:
+            for bus in sorted(storage_candidate_buses):
+                f.write(f"{bus}\n")
 
 
 def write_modules(folder):

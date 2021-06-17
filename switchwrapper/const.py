@@ -7,6 +7,7 @@ switch_modules = [
     "switch_model.generators.core.build",
     "switch_model.generators.core.dispatch",
     "switch_model.generators.core.no_commit",
+    "switch_model.generators.extensions.storage",
     "switch_model.energy_sources.fuel_costs.simple",
     "switch_model.transmission.local_td",
     "switch_model.transmission.transport.build",
@@ -14,9 +15,20 @@ switch_modules = [
     "switch_model.reporting",
 ]
 
+base_year = 2019
+
 financial_parameters = {
     "discount_rate": 0.079,
     "interest_rate": 0.029,
+}
+
+storage_parameters = {
+    "efficiency": 1,
+    "max_age": 20,  # years
+    "max_cycles": 200,  # cycles per year
+    "overnight_power_cost": 0,
+    "overnight_energy_cost": 2.13e5,
+    "tech": "Battery",
 }
 
 fuels = ["Coal", "NaturalGas", "Uranium", "Petroleum", "Other"]
@@ -32,6 +44,7 @@ fuel_mapping = {
     "nuclear": "Uranium",
     "dfo": "Petroleum",
     "other": "Other",
+    "storage": "Electricity",
 }
 
 load_parameters = {
@@ -51,6 +64,7 @@ non_fuels = [
     "Solar",
     "Water",
     "Geothermal",
+    "Electricity",
 ]
 
 investment_costs_by_type = {
