@@ -1,3 +1,4 @@
+import os
 import pickle
 from collections import defaultdict
 
@@ -246,30 +247,26 @@ class SwitchExtract:
         return self.input_profiles["solar"]
 
 
-def get_output_scenarios(
-    results_file,
-    timestamps_to_timepoints_file,
-    timepoints_file,
-    loads_file,
-    variable_capacity_factors_file,
-    grid_file,
-):
+def get_output_scenarios(switch_files_root):
     """Process Switch results into a series of Scenario objects, one for each
     investment year.
 
-    :param str results_file: file path of Switch results pickle file.
-    :param str timestamps_to_timepoints_file: file path of mapping.csv.
-    :param str timepoints_file: file path of timepoints.csv.
-    :param str loads_file: file path of loads.csv, the columns of the loaded demand
-        data frame are: 'LOAD_ZONE', 'TIMEPOINT', and 'zone_demand_mw' (no
-        meaningful index).
-    :param str variable_capacity_factors_file: file path of
-        variable_capacity_factors.csv, the columns of the loaded hydro/wind/solar
-        data frame are: 'GENERATION_PROJECT', 'timepoint',
-        and 'gen_max_capacity_factor' (no meaningful index).
-    :param str grid_file: file path of pickled grid instance, the input Grid that
-        Switch expanded upon.
+    :param str switch_files_root: file path of files prepared by :func:`prepare_inputs`.
     """
+    # Look up paths based on locations standardized via the `prepare_inputs` function.
+    grid_file = os.path.join(switch_files_root, "switchwrapper_inputs", "grid.pkl")
+    loads_file = os.path.join(switch_files_root, "inputs", "loads.csv")
+    results_file = os.path.join(switch_files_root, "outputs", "results.pickle")
+    timepoints_file = os.path.join(
+        switch_files_root, "switchwrapper_inputs", "timepoints.csv"
+    )
+    timestamps_to_timepoints_file = os.path.join(
+        switch_files_root, "switchwrapper_inputs", "timestamp_to_timepoints.csv"
+    )
+    variable_capacity_factors_file = os.path.join(
+        switch_files_root, "inputs", "variable_capacity_factors.csv"
+    )
+    # Then load and use the information
     with open(grid_file, "rb") as f:
         grid = pickle.load(f)
     se = SwitchExtract(
