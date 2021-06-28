@@ -255,6 +255,8 @@ def get_output_scenarios(switch_files_root):
     investment year.
 
     :param str switch_files_root: file path of files prepared by :func:`prepare_inputs`.
+    :return: (*dict*) -- keys are investment years, values are PowerSimData MockScenario
+        objects emulating the functionality of PowerSimData Scenario objects.
     """
     # Look up paths based on locations standardized via the `prepare_inputs` function.
     grid_file = os.path.join(switch_files_root, "switchwrapper_inputs", "grid.pkl")
