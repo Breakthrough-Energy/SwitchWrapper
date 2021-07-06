@@ -10,6 +10,7 @@ def match_variables(variables, pattern, columns, value_name="capacity"):
         with key "Value" and float value.
     :param str pattern: regex pattern to use to search for matching variables.
     :param iterable columns: names to extract from match to data frame columns.
+    :param str value_name: define the column name of values, defaults to "capacity".
     :return: (*pandas.DataFrame*) -- data frame of matching variables.
     """
     prog = re.compile(pattern)
@@ -17,7 +18,7 @@ def match_variables(variables, pattern, columns, value_name="capacity"):
         [
             {
                 **{name: m.group(name) for name in columns},
-                value_name: variables[m.group(0)]["Value"],
+                value_name: list(variables[m.group(0)].values())[0],
             }
             for m in [
                 prog.match(v) for v in variables.keys() if prog.match(v) is not None
