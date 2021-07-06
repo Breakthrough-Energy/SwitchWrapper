@@ -43,7 +43,7 @@ class SwitchExtract:
         self.timestamps_to_timepoints = load_timestamps_to_timepoints(
             timestamps_to_timepoints_file
         )
-        self._timestamp_to_investment_year(timepoints_file)
+        self._add_investment_year(timepoints_file)
         self._get_parsed_data(results_file)
         self.plant_id_mapping, _ = recover_plant_indices(
             self.parsed_data["DispatchGen"].columns.map(lambda x: x[1])
@@ -59,17 +59,16 @@ class SwitchExtract:
         self.variable_capacity_factors = pd.read_csv(variable_capacity_factors_file)
         self._reconstruct_input_profiles()
 
-    def _timestamp_to_investment_year(self, timepoints_file):
+    def _add_investment_year(self, timepoints_file):
         """Get investment year for each timestamp via timepoints.
 
         :param str timepoints_file: file path of timepoints.csv.
         """
         timepoints = pd.read_csv(timepoints_file)
         timepoints.set_index("timepoint_id", inplace=True)
-        self.timestamp_to_investment_year = pd.Series(
-            self.timestamps_to_timepoints["timepoint"].map(timepoints["ts_period"]),
-            index=self.timestamps_to_timepoints.index,
-        )
+        self.timestamps_to_timepoints[
+            "investment_year"
+        ] = self.timestamps_to_timepoints["timepoint"].map(timepoints["ts_period"])
 
     def _get_parsed_data(self, results_file):
         """Parse Switch results to get raw time series of pg and pf.
@@ -78,11 +77,19 @@ class SwitchExtract:
         """
         with open(results_file, "rb") as f:
             self.results = pickle.load(f)
-        data = self.results.solution._list[0].Variable
-        variables_to_parse = ["DispatchGen", "DispatchTx"]
-        self.parsed_data = parse_timepoints(
-            data, variables_to_parse, self.timestamps_to_timepoints, "dispatch"
-        )
+        data = ["Variable", "Constraint"]
+        variables_to_parse = [["DispatchGen", "DispatchTx"], ["Zone_Energy_Balance"]]
+        value_names = ["dispatch", "dual"]
+        self.parsed_data = dict()
+        for d, var, vn in zip(data, variables_to_parse, value_names):
+            self.parsed_data.update(
+                parse_timepoints(
+                    self.results.solution._list[0][d],
+                    var,
+                    self.timestamps_to_timepoints,
+                    value_name=vn,
+                )
+            )
 
     def get_pg(self):
         """Get time series power generation for each plant.
@@ -98,7 +105,8 @@ class SwitchExtract:
         pg = dict()
         for year, grid in self.grids.items():
             pg[year] = all_pg.loc[
-                self.timestamp_to_investment_year == year, grid.plant.index
+                self.timestamps_to_timepoints["investment_year"] == year,
+                grid.plant.index,
             ]
             pg[year].index = pd.Index(pg[year].index.map(pd.Timestamp), name="UTC")
         return pg
