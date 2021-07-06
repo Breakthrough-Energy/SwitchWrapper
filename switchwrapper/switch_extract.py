@@ -54,6 +54,7 @@ class SwitchExtract:
             self.ac_branch_id_mapping,
             self.dc_branch_id_mapping,
         ) = branch_indices_to_bus_tuple(grid)
+        self._calculate_abs_transmission_duals()
         self.grids = construct_grids_from_switch_results(grid, self.results)
 
         self.loads = pd.read_csv(loads_file)
@@ -90,7 +91,10 @@ class SwitchExtract:
         with open(results_file, "rb") as f:
             self.results = pickle.load(f)
         data = ["Variable", "Constraint"]
-        variables_to_parse = [["DispatchGen", "DispatchTx"], ["Zone_Energy_Balance"]]
+        variables_to_parse = [
+            ["DispatchGen", "DispatchTx"],
+            ["Zone_Energy_Balance", "Maximum_DispatchTx"],
+        ]
         value_names = ["dispatch", "dual"]
         self.parsed_data = dict()
         for d, var, vn in zip(data, variables_to_parse, value_names):
@@ -195,6 +199,20 @@ class SwitchExtract:
             ].divide(self.timestamps_to_timepoints["weight"], axis="index")
             lmp[year].index = pd.Index(lmp[year].index.map(pd.Timestamp), name="UTC")
         return lmp
+
+    def _calculate_abs_transmission_duals(self):
+        """Calculate absolute values of transmission duals between every bus tuple."""
+        self.abs_cong = (
+            self.parsed_data["Maximum_DispatchTx"]
+            .abs()
+            .divide(self.timestamps_to_timepoints["weight"], axis="index")
+        )
+        self.abs_cong.columns = self.abs_cong.columns.map(
+            lambda x: tuple(map(int, x[1].split(",")))
+        )
+        self.abs_cong.index = pd.Index(
+            self.abs_cong.index.map(pd.Timestamp), name="UTC"
+        )
 
     def _reconstruct_input_profiles(self):
         """Given the temporally-reduced profiles that are given to Switch and the
