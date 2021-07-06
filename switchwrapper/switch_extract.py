@@ -214,6 +214,21 @@ class SwitchExtract:
             self.abs_cong.index.map(pd.Timestamp), name="UTC"
         )
 
+    def get_congu(self):
+        """Get time series congu, i.e. congestion at upper power flow limit, for each
+        ac branch in every investment year.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with branch_id as columns.
+        """
+        congu = dict()
+        for year, grid in self.grids.items():
+            congu[year] = self.abs_cong[
+                grid.branch.index.map(self.ac_branch_id_mapping)
+            ]
+            congu[year].columns = grid.branch.index
+        return congu
+
     def _reconstruct_input_profiles(self):
         """Given the temporally-reduced profiles that are given to Switch and the
         reduction mapping, reconstruct full-dimension profiles for the Grid that is
