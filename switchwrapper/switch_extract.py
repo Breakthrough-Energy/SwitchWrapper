@@ -43,6 +43,7 @@ class SwitchExtract:
         self.timestamps_to_timepoints = load_timestamps_to_timepoints(
             timestamps_to_timepoints_file
         )
+        self._add_timepoint_weight()
         self._add_investment_year(timepoints_file)
         self._get_parsed_data(results_file)
         self.plant_id_mapping, _ = recover_plant_indices(
@@ -58,6 +59,17 @@ class SwitchExtract:
         self.loads = pd.read_csv(loads_file)
         self.variable_capacity_factors = pd.read_csv(variable_capacity_factors_file)
         self._reconstruct_input_profiles()
+
+    def _add_timepoint_weight(self):
+        """Add weights to timestamps_to_timepoints data frame based on timepoints."""
+        self.timestamps_to_timepoints["weight"] = self.timestamps_to_timepoints[
+            "timepoint"
+        ].map(
+            self.timestamps_to_timepoints.reset_index()
+            .groupby("timepoint")
+            .count()
+            .squeeze()
+        )
 
     def _add_investment_year(self, timepoints_file):
         """Get investment year for each timestamp via timepoints.
