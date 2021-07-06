@@ -229,6 +229,23 @@ class SwitchExtract:
             congu[year].columns = grid.branch.index
         return congu
 
+    def get_congl(self):
+        """Get time series congl, i.e. congestion at lower power flow limit, for each
+        ac branch in every investment year.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with branch_id as columns.
+        """
+        congl = dict()
+        abs_cong_mirror = self.abs_cong.copy()
+        abs_cong_mirror.columns = abs_cong_mirror.columns.map(lambda x: (x[1], x[0]))
+        for year, grid in self.grids.items():
+            congl[year] = abs_cong_mirror[
+                grid.branch.index.map(self.ac_branch_id_mapping)
+            ]
+            congl[year].columns = grid.branch.index
+        return congl
+
     def _reconstruct_input_profiles(self):
         """Given the temporally-reduced profiles that are given to Switch and the
         reduction mapping, reconstruct full-dimension profiles for the Grid that is
