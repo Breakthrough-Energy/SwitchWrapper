@@ -180,6 +180,22 @@ class SwitchExtract:
             )
         return dcline_pf
 
+    def get_lmp(self):
+        """Get time series lmp for each bus in every investment year.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with bua_id as columns.
+        """
+        all_lmp = self.parsed_data["Zone_Energy_Balance"].copy()
+        all_lmp.columns = all_lmp.columns.map(lambda x: int(x[1]))
+        lmp = dict()
+        for year, grid in self.grids.items():
+            lmp[year] = all_lmp.loc[
+                self.timestamps_to_timepoints["investment_year"] == year, grid.bus.index
+            ].divide(self.timestamps_to_timepoints["weight"], axis="index")
+            lmp[year].index = pd.Index(lmp[year].index.map(pd.Timestamp), name="UTC")
+        return lmp
+
     def _reconstruct_input_profiles(self):
         """Given the temporally-reduced profiles that are given to Switch and the
         reduction mapping, reconstruct full-dimension profiles for the Grid that is
