@@ -374,6 +374,9 @@ def get_output_scenarios(switch_files_root):
             hydro=se.get_hydro()[year],
             solar=se.get_solar()[year],
             wind=se.get_wind()[year],
+            lmp=se.get_lmp()[year],
+            congu=se.get_congu()[year],
+            congl=se.get_congl()[year],
         )
         mock_scenario.state.grid = se.grids[year]
         scenarios[year] = mock_scenario
