@@ -65,12 +65,7 @@ class SwitchExtract:
         """Add weights to timestamps_to_timepoints data frame based on timepoints."""
         self.timestamps_to_timepoints["weight"] = self.timestamps_to_timepoints[
             "timepoint"
-        ].map(
-            self.timestamps_to_timepoints.reset_index()
-            .groupby("timepoint")
-            .count()
-            .squeeze()
-        )
+        ].map(self.timestamps_to_timepoints.squeeze().value_counts())
 
     def _add_investment_year(self, timepoints_file):
         """Get investment year for each timestamp via timepoints.
