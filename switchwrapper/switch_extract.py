@@ -183,7 +183,7 @@ class SwitchExtract:
         """Get time series lmp for each bus in every investment year.
 
         :return: (*dict*) -- keys are investment years, values are data frames indexed
-            by timestamps with bua_id as columns.
+            by timestamps with bus_id as columns.
         """
         all_lmp = self.parsed_data["Zone_Energy_Balance"].copy()
         all_lmp.columns = all_lmp.columns.map(lambda x: int(x[1]))
