@@ -10,6 +10,7 @@ def match_variables(variables, pattern, columns, value_name="capacity"):
         with key "Value" and float value.
     :param str pattern: regex pattern to use to search for matching variables.
     :param iterable columns: names to extract from match to data frame columns.
+    :param str value_name: define the column name of values, defaults to "capacity".
     :return: (*pandas.DataFrame*) -- data frame of matching variables.
     """
     prog = re.compile(pattern)
@@ -17,7 +18,7 @@ def match_variables(variables, pattern, columns, value_name="capacity"):
         [
             {
                 **{name: m.group(name) for name in columns},
-                value_name: variables[m.group(0)]["Value"],
+                value_name: list(variables[m.group(0)].values())[0],
             }
             for m in [
                 prog.match(v) for v in variables.keys() if prog.match(v) is not None
@@ -72,9 +73,10 @@ def parse_timepoints(var_dict, variables, timestamps_to_timepoints, value_name):
     a timestamp-indexed dataframe.
 
     :param dict var_dict: a flat dictionary where the keys are a string
-        containing both variable names and variable parameters and the values
-        are a dictionary where Value is the datapoint for that combination of
-        variable name and parameters.
+        containing both variable names and variable indexes and the values
+        are a dictionary. This dictionary has a single key ("Value" for primal
+        variables, or "Dual" for dual variables) and the value is the data point for
+        that combination of variable name and indexes.
     :param list variables: a list of timeseries variable strings to parse out
     :param pandas.DataFrame timestamps_to_timepoints: data frame indexed by
         timestamps with a column of timepoints for each timestamp.

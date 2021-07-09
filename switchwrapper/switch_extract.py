@@ -43,7 +43,8 @@ class SwitchExtract:
         self.timestamps_to_timepoints = load_timestamps_to_timepoints(
             timestamps_to_timepoints_file
         )
-        self._timestamp_to_investment_year(timepoints_file)
+        self._add_timepoint_weight()
+        self._add_investment_year(timepoints_file)
         self._get_parsed_data(results_file)
         self.plant_id_mapping, _ = recover_plant_indices(
             self.parsed_data["DispatchGen"].columns.map(lambda x: x[1])
@@ -53,23 +54,29 @@ class SwitchExtract:
             self.ac_branch_id_mapping,
             self.dc_branch_id_mapping,
         ) = branch_indices_to_bus_tuple(grid)
+        self._calculate_abs_transmission_duals()
         self.grids = construct_grids_from_switch_results(grid, self.results)
 
         self.loads = pd.read_csv(loads_file)
         self.variable_capacity_factors = pd.read_csv(variable_capacity_factors_file)
         self._reconstruct_input_profiles()
 
-    def _timestamp_to_investment_year(self, timepoints_file):
+    def _add_timepoint_weight(self):
+        """Add weights to timestamps_to_timepoints data frame based on timepoints."""
+        self.timestamps_to_timepoints["weight"] = self.timestamps_to_timepoints[
+            "timepoint"
+        ].map(self.timestamps_to_timepoints.squeeze().value_counts())
+
+    def _add_investment_year(self, timepoints_file):
         """Get investment year for each timestamp via timepoints.
 
         :param str timepoints_file: file path of timepoints.csv.
         """
         timepoints = pd.read_csv(timepoints_file)
         timepoints.set_index("timepoint_id", inplace=True)
-        self.timestamp_to_investment_year = pd.Series(
-            self.timestamps_to_timepoints["timepoint"].map(timepoints["ts_period"]),
-            index=self.timestamps_to_timepoints.index,
-        )
+        self.timestamps_to_timepoints[
+            "investment_year"
+        ] = self.timestamps_to_timepoints["timepoint"].map(timepoints["ts_period"])
 
     def _get_parsed_data(self, results_file):
         """Parse Switch results to get raw time series of pg and pf.
@@ -78,11 +85,22 @@ class SwitchExtract:
         """
         with open(results_file, "rb") as f:
             self.results = pickle.load(f)
-        data = self.results.solution._list[0].Variable
-        variables_to_parse = ["DispatchGen", "DispatchTx"]
-        self.parsed_data = parse_timepoints(
-            data, variables_to_parse, self.timestamps_to_timepoints, "dispatch"
-        )
+        data = ["Variable", "Constraint"]
+        variables_to_parse = [
+            ["DispatchGen", "DispatchTx"],
+            ["Zone_Energy_Balance", "Maximum_DispatchTx"],
+        ]
+        value_names = ["dispatch", "dual"]
+        self.parsed_data = dict()
+        for d, var, vn in zip(data, variables_to_parse, value_names):
+            self.parsed_data.update(
+                parse_timepoints(
+                    self.results.solution._list[0][d],
+                    var,
+                    self.timestamps_to_timepoints,
+                    value_name=vn,
+                )
+            )
 
     def get_pg(self):
         """Get time series power generation for each plant.
@@ -98,7 +116,8 @@ class SwitchExtract:
         pg = dict()
         for year, grid in self.grids.items():
             pg[year] = all_pg.loc[
-                self.timestamp_to_investment_year == year, grid.plant.index
+                self.timestamps_to_timepoints["investment_year"] == year,
+                grid.plant.index,
             ]
             pg[year].index = pd.Index(pg[year].index.map(pd.Timestamp), name="UTC")
         return pg
@@ -159,6 +178,68 @@ class SwitchExtract:
                 dcline_pf[year].index.map(pd.Timestamp), name="UTC"
             )
         return dcline_pf
+
+    def get_lmp(self):
+        """Get time series lmp for each bus in every investment year.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with bus_id as columns.
+        """
+        all_lmp = self.parsed_data["Zone_Energy_Balance"].copy()
+        all_lmp.columns = all_lmp.columns.map(lambda x: int(x[1]))
+        lmp = dict()
+        for year, grid in self.grids.items():
+            lmp[year] = all_lmp.loc[
+                self.timestamps_to_timepoints["investment_year"] == year, grid.bus.index
+            ].divide(self.timestamps_to_timepoints["weight"], axis="index")
+            lmp[year].index = pd.Index(lmp[year].index.map(pd.Timestamp), name="UTC")
+        return lmp
+
+    def _calculate_abs_transmission_duals(self):
+        """Calculate absolute values of transmission duals between every bus tuple."""
+        self.abs_cong = (
+            self.parsed_data["Maximum_DispatchTx"]
+            .abs()
+            .divide(self.timestamps_to_timepoints["weight"], axis="index")
+        )
+        self.abs_cong.columns = self.abs_cong.columns.map(
+            lambda x: tuple(map(int, x[1].split(",")))
+        )
+        self.abs_cong.index = pd.Index(
+            self.abs_cong.index.map(pd.Timestamp), name="UTC"
+        )
+
+    def get_congu(self):
+        """Get time series congu, i.e. congestion at upper power flow limit, for each
+        ac branch in every investment year.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with branch_id as columns.
+        """
+        congu = dict()
+        for year, grid in self.grids.items():
+            congu[year] = self.abs_cong[
+                grid.branch.index.map(self.ac_branch_id_mapping)
+            ]
+            congu[year].columns = grid.branch.index
+        return congu
+
+    def get_congl(self):
+        """Get time series congl, i.e. congestion at lower power flow limit, for each
+        ac branch in every investment year.
+
+        :return: (*dict*) -- keys are investment years, values are data frames indexed
+            by timestamps with branch_id as columns.
+        """
+        congl = dict()
+        abs_cong_mirror = self.abs_cong.copy()
+        abs_cong_mirror.columns = abs_cong_mirror.columns.map(lambda x: (x[1], x[0]))
+        for year, grid in self.grids.items():
+            congl[year] = abs_cong_mirror[
+                grid.branch.index.map(self.ac_branch_id_mapping)
+            ]
+            congl[year].columns = grid.branch.index
+        return congl
 
     def _reconstruct_input_profiles(self):
         """Given the temporally-reduced profiles that are given to Switch and the
@@ -293,6 +374,9 @@ def get_output_scenarios(switch_files_root):
             hydro=se.get_hydro()[year],
             solar=se.get_solar()[year],
             wind=se.get_wind()[year],
+            lmp=se.get_lmp()[year],
+            congu=se.get_congu()[year],
+            congl=se.get_congl()[year],
         )
         mock_scenario.state.grid = se.grids[year]
         scenarios[year] = mock_scenario
