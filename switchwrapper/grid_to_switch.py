@@ -287,6 +287,7 @@ def build_generation_projects_info(
 
     # Finally, construct data frame and return
     df = pd.DataFrame(index=pd.Index(all_plant_indices, name="GENERATION_PROJECT"))
+    # Add columns
     df["gen_tech"] = (
         plant.type.tolist() * 2 + [const.storage_parameters["tech"]] * num_storage
     )
@@ -296,10 +297,6 @@ def build_generation_projects_info(
     df["gen_load_zone"] = gen_load_zone
     df["gen_connect_cost_per_mw"] = 0
     df["gen_capacity_limit_mw"] = "."
-    df.loc[indices["expansion"], "gen_capacity_limit_mw"] = [
-        const.assumed_capacity_limits.get(t, const.assumed_capacity_limits["default"])
-        for t in plant.type.tolist()
-    ]
     df["gen_full_load_heat_rate"] = estimated_heatrate.tolist() * 2 + [0] * num_storage
     df["gen_variable_om"] = nonfuel_gencost.tolist() * 2 + [0] * num_storage
     df["gen_max_age"] = [
@@ -320,7 +317,6 @@ def build_generation_projects_info(
         plant.type.map(const.fuel_mapping).tolist() * 2
         + [const.fuel_mapping["storage"]] * num_storage
     )
-    df.loc[df.gen_energy_source.isin(const.non_fuels), "gen_full_load_heat_rate"] = "."
     df["gen_unit_size"] = "."
     df["gen_ccs_capture_efficiency"] = "."
     df["gen_ccs_energy_load"] = "."
@@ -334,8 +330,25 @@ def build_generation_projects_info(
         df["gen_storage_max_cycles_per_year"] = ["."] * num_gens + [
             const.storage_parameters["max_cycles"]
         ] * num_storage
-    df.reset_index(inplace=True)
+    # Refine data
+    # Add generation expansion limits
+    df.loc[indices["expansion"], "gen_capacity_limit_mw"] = [
+        const.assumed_capacity_limits.get(t, const.assumed_capacity_limits["default"])
+        for t in plant.type.tolist()
+    ]
+    # Ensure that no fueled generators with zero heat-rate can be built
+    df.loc[
+        (
+            df.index.isin(indices["expansion"])
+            & (df.gen_full_load_heat_rate == 0)
+            & df.gen_energy_source.isin(const.fuels)
+        ),
+        "gen_capacity_limit_mw",
+    ] = 0
+    # Ensure that heat rates are not written for non-fueled generators
+    df.loc[df.gen_energy_source.isin(const.non_fuels), "gen_full_load_heat_rate"] = "."
 
+    df.reset_index(inplace=True)
     return df
 
 
