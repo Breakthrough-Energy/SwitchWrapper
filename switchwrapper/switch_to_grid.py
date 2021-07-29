@@ -47,8 +47,8 @@ def create_upgraded_grids(grid, build_gen, build_tx, build_storage_energy):
         output_grid.data_loc = None
         # Then make additions based on each year's upgrade results
         add_tx_upgrades_to_grid(output_grid, build_tx, year)
-        add_gen_upgrades_to_grid(output_grid, build_gen, year)
         add_storage_upgrades_to_grid(output_grid, build_gen, build_storage_energy, year)
+        add_gen_upgrades_to_grid(output_grid, build_gen, year)
         # Finally, save
         all_grids[year] = output_grid
 
@@ -125,7 +125,7 @@ def add_gen_upgrades_to_grid(grid, build_gen, year):
     :param int year: upgrades year to apply upgrades from.
     """
     # Extract indices
-    plant_ids, _ = recover_plant_indices(build_gen["gen_id"])
+    plant_ids, _ = recover_plant_indices(build_gen["gen_id"], grid.plant.index.max())
     existing_plant_ids, expansion_plant_ids = split_plant_existing_expansion(plant_ids)
     num_original_plants = len(existing_plant_ids)
     new_plant_ids = plant_ids.iloc[num_original_plants:]
@@ -171,7 +171,7 @@ def add_storage_upgrades_to_grid(grid, build_gen, build_storage_energy, year):
     :param int year: upgrades year to apply upgrades from.
     """
     # Extract indices
-    _, storage_ids = recover_plant_indices(build_gen["gen_id"])
+    _, storage_ids = recover_plant_indices(build_gen["gen_id"], grid.plant.index.max())
     new_storage = build_gen.query(
         "gen_id in @storage_ids and year == @year and capacity > 0"
     )
