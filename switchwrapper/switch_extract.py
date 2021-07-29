@@ -87,7 +87,7 @@ class SwitchExtract:
             self.results = pickle.load(f)
         data = ["Variable", "Constraint"]
         variables_to_parse = [
-            ["DispatchGen", "DispatchTx", "ChargeStorage"],
+            ["DispatchGen", "DispatchTx", "ChargeStorage", "StateOfCharge"],
             ["Zone_Energy_Balance", "Maximum_DispatchTx"],
         ]
         value_names = ["dispatch", "dual"]
@@ -129,7 +129,7 @@ class SwitchExtract:
             indexed by timestamps with storage_id as columns.
         """
         discharge = self.parsed_data["DispatchGen"].copy()
-        charge = -1*self.parsed_data["ChargeStorage"].copy()
+        charge = -1 * self.parsed_data["ChargeStorage"].copy()
         all_storage_pg = discharge.where(discharge != 0, charge)
         all_storage_pg = all_storage_pg[
             [("dispatch", s) for s in self.storage_id_mapping]
@@ -146,6 +146,29 @@ class SwitchExtract:
                 storage_pg[year].index.map(pd.Timestamp), name="UTC"
             )
         return storage_pg
+
+    def get_storage_e(self):
+        """Get time series state of charge for storage devices.
+
+        :return: (*dict*) -- keys are investment years, values are data frames
+            indexed by timestamps with storage_id as columns.
+        """
+        all_storage_e = self.parsed_data["StateOfCharge"].copy()
+        all_storage_e = all_storage_e[
+            [("dispatch", s) for s in self.storage_id_mapping]
+        ]
+        all_storage_e.columns = self.storage_id_mapping.index
+        storage_e = dict()
+        for year, grid in self.grids.items():
+            storage_e[year] = all_storage_e.loc[
+                self.timestamps_to_timepoints["investment_year"] == year,
+                grid.storage["StorageData"].UnitIdx,
+            ]
+            storage_e[year].columns = grid.storage["gen"].index
+            storage_e[year].index = pd.Index(
+                storage_e[year].index.map(pd.Timestamp), name="UTC"
+            )
+        return storage_e
 
     def _calculate_net_pf(self):
         """Calculate net power flow between every bus tuple."""
