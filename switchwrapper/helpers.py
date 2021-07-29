@@ -121,10 +121,13 @@ def parse_timepoints(var_dict, variables, timestamps_to_timepoints, value_name):
     return parsed_data
 
 
-def recover_plant_indices(switch_plant_ids):
+def recover_plant_indices(switch_plant_ids, ref_last_original_plant_id=None):
     """Recover the plant indices from Switch outputs.
 
     :param iterable switch_plant_ids: Switch plant indices.
+    :param int ref_last_original_plant_id: last original plant id reference,
+        the final last original plant id will be the larger one between the last
+        original plant id from switch_plant_ids and the reference if provided.
     :return: (*tuple*) -- a pair of pandas.Series objects for plant and storage
         respectively. The plant series is indexed by original plant IDs (with new plants
         added), values are Switch plant indices. The storage series is indexed by
@@ -135,6 +138,9 @@ def recover_plant_indices(switch_plant_ids):
         if ind[-1] != "i":
             last_original_plant_id = int(ind[1:])
             break
+    if ref_last_original_plant_id is not None:
+        last_original_plant_id = max(last_original_plant_id, ref_last_original_plant_id)
+
     cnt = 0
     for ind in switch_plant_ids:
         if ind[-1] != "i":
