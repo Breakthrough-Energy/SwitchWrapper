@@ -418,6 +418,8 @@ def get_output_scenarios(switch_files_root):
             pg=se.get_pg()[year],
             pf=se.get_pf()[year],
             dcline_pf=se.get_dcline_pf()[year],
+            storage_pg=se.get_storage_pg()[year],
+            storage_e=se.get_storage_e()[year],
             demand=se.get_demand()[year],
             hydro=se.get_hydro()[year],
             solar=se.get_solar()[year],
