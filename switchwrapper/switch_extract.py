@@ -46,7 +46,7 @@ class SwitchExtract:
         self._add_timepoint_weight()
         self._add_investment_year(timepoints_file)
         self._get_parsed_data(results_file)
-        self.plant_id_mapping, _ = recover_plant_indices(
+        self.plant_id_mapping, self.storage_id_mapping = recover_plant_indices(
             self.parsed_data["DispatchGen"].columns.map(lambda x: x[1])
         )
         self._calculate_net_pf()
@@ -87,7 +87,7 @@ class SwitchExtract:
             self.results = pickle.load(f)
         data = ["Variable", "Constraint"]
         variables_to_parse = [
-            ["DispatchGen", "DispatchTx"],
+            ["DispatchGen", "DispatchTx", "ChargeStorage", "StateOfCharge"],
             ["Zone_Energy_Balance", "Maximum_DispatchTx"],
         ]
         value_names = ["dispatch", "dual"]
@@ -121,6 +121,54 @@ class SwitchExtract:
             ]
             pg[year].index = pd.Index(pg[year].index.map(pd.Timestamp), name="UTC")
         return pg
+
+    def get_storage_pg(self):
+        """Get time series power generation for storage devices.
+
+        :return: (*dict*) -- keys are investment years, values are data frames
+            indexed by timestamps with storage_id as columns.
+        """
+        discharge = self.parsed_data["DispatchGen"].copy()
+        charge = -1 * self.parsed_data["ChargeStorage"].copy()
+        all_storage_pg = discharge.where(discharge != 0, charge)
+        all_storage_pg = all_storage_pg[
+            [("dispatch", s) for s in self.storage_id_mapping]
+        ]
+        all_storage_pg.columns = self.storage_id_mapping.index
+        storage_pg = dict()
+        for year, grid in self.grids.items():
+            storage_pg[year] = all_storage_pg.loc[
+                self.timestamps_to_timepoints["investment_year"] == year,
+                grid.storage["StorageData"].UnitIdx,
+            ]
+            storage_pg[year].columns = grid.storage["gen"].index
+            storage_pg[year].index = pd.Index(
+                storage_pg[year].index.map(pd.Timestamp), name="UTC"
+            )
+        return storage_pg
+
+    def get_storage_e(self):
+        """Get time series state of charge for storage devices.
+
+        :return: (*dict*) -- keys are investment years, values are data frames
+            indexed by timestamps with storage_id as columns.
+        """
+        all_storage_e = self.parsed_data["StateOfCharge"].copy()
+        all_storage_e = all_storage_e[
+            [("dispatch", s) for s in self.storage_id_mapping]
+        ]
+        all_storage_e.columns = self.storage_id_mapping.index
+        storage_e = dict()
+        for year, grid in self.grids.items():
+            storage_e[year] = all_storage_e.loc[
+                self.timestamps_to_timepoints["investment_year"] == year,
+                grid.storage["StorageData"].UnitIdx,
+            ]
+            storage_e[year].columns = grid.storage["gen"].index
+            storage_e[year].index = pd.Index(
+                storage_e[year].index.map(pd.Timestamp), name="UTC"
+            )
+        return storage_e
 
     def _calculate_net_pf(self):
         """Calculate net power flow between every bus tuple."""
@@ -370,6 +418,8 @@ def get_output_scenarios(switch_files_root):
             pg=se.get_pg()[year],
             pf=se.get_pf()[year],
             dcline_pf=se.get_dcline_pf()[year],
+            storage_pg=se.get_storage_pg()[year],
+            storage_e=se.get_storage_e()[year],
             demand=se.get_demand()[year],
             hydro=se.get_hydro()[year],
             solar=se.get_solar()[year],
