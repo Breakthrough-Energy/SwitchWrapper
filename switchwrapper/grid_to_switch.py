@@ -185,10 +185,10 @@ def linearize_gencost(grid):
     )
     gencost = grid.gencost["before"]
     cost_at_min_power = (
-        gencost.c0 + gencost.c1 * plant_mod.Pmin + gencost.c2 * plant_mod.Pmin ** 2
+        gencost.c0 + gencost.c1 * plant_mod.Pmin + gencost.c2 * plant_mod.Pmin**2
     )
     cost_at_max_power = (
-        gencost.c0 + gencost.c1 * plant_mod.Pmax + gencost.c2 * plant_mod.Pmax ** 2
+        gencost.c0 + gencost.c1 * plant_mod.Pmax + gencost.c2 * plant_mod.Pmax**2
     )
     single_segment_slope = (cost_at_max_power - cost_at_min_power) / (
         plant_mod.Pmax - plant_mod.Pmin
